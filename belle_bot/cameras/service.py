@@ -3,6 +3,7 @@ import json
 import time
 import cv2
 
+from belle_bot.cameras.utils import FABRIC_ID
 from belle_bot.fabric import FabricClient
 
 MAX_FPS = 5
@@ -24,7 +25,7 @@ if __name__ == "__main__":
         _, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY])
         frame_string = base64.b64encode(buffer).decode("utf-8")
 
-        CLIENT.publish("camera", {
+        CLIENT.publish(FABRIC_ID, {
             "rgb": frame_string,
             "shape": json.dumps(frame.shape),
         })

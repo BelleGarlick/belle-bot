@@ -1,12 +1,11 @@
 import base64
 import cv2
 import numpy as np
-import json
 import queue
 
+from belle_bot.cameras.utils import FABRIC_ID
 from belle_bot.fabric import FabricClient
 
-# Thread-safe queue for UI data
 frame_queue = queue.Queue()
 CLIENT = FabricClient()
 
@@ -17,7 +16,7 @@ def show_frame_callback(data):
 
 
 if __name__ == "__main__":
-    CLIENT.listen("camera", show_frame_callback)
+    CLIENT.listen(FABRIC_ID, show_frame_callback)
 
     cv2.namedWindow("preview")
 
