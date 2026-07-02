@@ -4,3 +4,5 @@ uvicorn
 websocket-client
 websockets
 sounddevice
+
+torch

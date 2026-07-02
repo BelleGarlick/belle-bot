@@ -25,3 +25,17 @@ Sensors provide the robot with data from the environment.
 - Have a way to override the host url so that it can stream information remotely and have the compute on another device on the network
 - Log system usage metrics and performance logs for each system
 - Create pose estimation for face detection and eventually recognition
+
+## Future Components
+- Depth handling in the existing camera module which publishes the depth map everywhere
+- Local Mapper
+  - This should be used to work out the local environment that it can currently see. So it should show information that it can see at the current time step both for humans and for terrain
+- Global Mapper
+  - This should take information from the local mapper and persist data through time this way we can understand where information is at a global level, not just local
+- The LLM module 
+  - this should have text output to understand the world around it with basic actions to speak, move cameras, set waypoint to move, perform specific actions like spinning around, save information about a user, save information to local temporary memory, save information to a specific location so when they're near it, tells you information about it
+- Movement pipeline
+- Have a personal knowledge pipeline
+- Have a personality pipeline
+- have a human knowledge pipeline
+- have a global knowledge pipeline
