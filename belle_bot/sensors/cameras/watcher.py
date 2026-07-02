@@ -1,10 +1,9 @@
-import base64
 import cv2
-import numpy as np
 import queue
 
 from belle_bot.sensors.cameras.config import FABRIC_ID
 from belle_bot.fabric import FabricClient
+from belle_bot.sensors.cameras.utils import parse_camera_stream
 
 frame_queue = queue.Queue()
 CLIENT = FabricClient()
@@ -25,13 +24,13 @@ if __name__ == "__main__":
         while True:
             # Check if there is a new frame in the queue
             if not frame_queue.empty():
-                data = frame_queue.get()
+                # Only process the latest frame and drop everything else in the queue
+                while not frame_queue.empty():
+                    data = frame_queue.get()
 
-                frame_bytes = base64.b64decode(data["rgb"])
-                # Decode from JPEG format
-                frame_array = cv2.imdecode(np.frombuffer(frame_bytes, np.uint8), cv2.IMREAD_COLOR)
-                frame_array = cv2.cvtColor(frame_array, cv2.COLOR_BGR2RGB)
-                cv2.imshow("preview", frame_array)
+                frame = parse_camera_stream(data["rgb"])
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                cv2.imshow("preview", frame)
                 cv2.waitKey(1)
 
     except KeyboardInterrupt:

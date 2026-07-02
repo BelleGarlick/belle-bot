@@ -1,10 +1,27 @@
+import base64
 import json
 import threading
 
 import httpx
+import numpy as np
 import websocket
 import requests
 from .utils import FABRIC_PORT
+
+
+def process_data(data):
+    output = {}
+
+    for key, value in data.items():
+        if isinstance(value, np.ndarray):
+            value = base64.b64encode(value.tobytes()).decode("utf-8")
+
+        if isinstance(value, int) or isinstance(value, float):
+            value = str(value)
+
+        output[key] = value
+
+    return output
 
 
 class FabricClient:
@@ -43,6 +60,8 @@ class FabricClient:
         wst.start()
 
     def publish(self, stream: str, data: dict):
+        data = process_data(data)
+
         url = f"http://{self.host}:{self.port}/publish/{stream}"
         try:
             response = requests.post(url, json={"data": data})
@@ -53,6 +72,8 @@ class FabricClient:
             return None
 
     async def publish_async(self, service_name, data):
+        data = process_data(data)
+
         # Using httpx for async publishing
         url = f"http://{self.host}:{self.port}/publish/{service_name}"
         async with httpx.AsyncClient() as client:

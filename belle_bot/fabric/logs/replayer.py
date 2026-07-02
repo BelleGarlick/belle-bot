@@ -4,7 +4,7 @@ import asyncio
 
 from belle_bot.fabric import FabricClient
 
-os.environ["FABRIC_PATH"] = "/Users/belle/Developer/belle-bot/event2.db"
+os.environ["FABRIC_PATH"] = "/Users/belle/Developer/belle-bot/event3.db"
 
 from belle_bot.fabric.logs import get_logs
 

@@ -1,4 +1,6 @@
 import base64
+import uuid
+
 import sounddevice as sd
 import asyncio
 import numpy as np
@@ -30,6 +32,7 @@ async def stream_audio():
             audio_payload = base64.b64encode(to_send).decode('utf-8')
 
             coro = CLIENT.publish_async(config.FABRIC_ID, {
+                "audio_id": str(uuid.uuid4()),
                 "audio": audio_payload,
                 "sample_rate": str(config.SAMPLE_RATE),
                 "channels": str(1)

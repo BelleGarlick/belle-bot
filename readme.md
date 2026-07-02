@@ -17,3 +17,11 @@ Sensors provide the robot with data from the environment.
 
 - **Camera**: Captures and publishes video frames. See [Camera README](belle_bot/sensors/cameras/readme.md).
 - **Microphone**: Captures and publishes audio data. See [Microphone README](belle_bot/sensors/microphone/readme.md).
+
+## TODO
+- Create a script to trigger all the scripts including the fabric to run everything
+- Should have a way to have the logging run change randomly so that we can upload 30min chunks to blob store if on the same network
+- Should have a way to remotely deploy to it
+- Have a way to override the host url so that it can stream information remotely and have the compute on another device on the network
+- Log system usage metrics and performance logs for each system
+- Create pose estimation for face detection and eventually recognition

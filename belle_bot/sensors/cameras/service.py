@@ -1,6 +1,8 @@
 import base64
 import json
 import time
+import uuid
+
 import cv2
 
 from belle_bot.fabric import FabricClient
@@ -27,9 +29,10 @@ if __name__ == "__main__":
         frame_string = base64.b64encode(buffer).decode("utf-8")
 
         CLIENT.publish(config.FABRIC_ID, {
+            "frame_id": str(uuid.uuid4()),
             "rgb": frame_string,
             "shape": json.dumps(frame.shape),
-            "jpeg_quality": str(config.JPEG_QUALITY),
+            "jpeg_quality": config.JPEG_QUALITY,
         })
 
         rval, frame = vc.read()
