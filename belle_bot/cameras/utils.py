@@ -1,1 +1,1 @@
-FABRIC_ID = "CAMERA"
+FABRIC_ID = "sensors/camera"

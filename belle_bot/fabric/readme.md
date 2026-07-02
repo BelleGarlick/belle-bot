@@ -1,6 +1,25 @@
 # Fabric
 
-Fabric is the communications protocol that everything communicates over. This is akin to ROS. We can publish data to the fabric and subscribe to streams via WebSockets to get notified when messages are published.
+Fabric is the communications protocol that everything communicates over. This is akin to ROS. We can publish data to the fabric and subscribe to streams via WebSockets to get notified when messages are published. 
+
+As data is sent over the fabric, a logger may be configured which allows for all the events in the system to be stored to disk. Doing so will allow for replaying the whole system at a later date to understand what the system is doing / re-simulate events. This will allow us to at a later date train on and improve on the data caught in the fabric.
+
+## Running the Fabric Service
+
+The Fabric service is a FastAPI application that acts as the central hub for all communications.
+
+### Basic Run (Without Logging)
+To run the fabric without persistent logging:
+```bash
+python3 belle_bot/fabric/service.py
+```
+
+### Running with Logging
+To enable logging of all messages to a SQLite database, set the `FABRIC_PATH` environment variable:
+```bash
+FABRIC_PATH=<event_name>.db python3 belle_bot/fabric/service.py
+```
+This will create or use `<event_name>.db` to store all published messages, allowing for later analysis and replaying.
 
 ## Usage
 
@@ -11,9 +30,16 @@ The fabric service runs on port 59990 by default. It provides a WebSocket endpoi
 - `POST /publish/{stream}`: Send a JSON body with `{"data": {...}}` to publish to the stream.
 
 ### Client
-Use the `FabricClient` in `belle_bot.fabric.client` to interact with the fabric.
+Use the `FabricClient` in `belle_bot.fabric.client` to interact with the fabric programmatically.
 
-## TODO
-- Add testing
-- Incorporate logging
-- Replay events somehow - may have to just be done as and when needed
+```python
+from belle_bot.fabric.client import FabricClient
+
+client = FabricClient()
+
+client.publish("my_stream", {"key": "value"})
+client.listen("another_stream", print)
+```
+
+### Replaying Logs
+You can use the replayer tool in `belle_bot/fabric/logs/replayer.py` to play back events stored in the database.

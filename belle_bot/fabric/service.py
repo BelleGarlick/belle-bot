@@ -1,9 +1,12 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
-from belle_bot.fabric.utils import FABRIC_PORT
+from belle_bot.fabric import logs, utils
 
 app = FastAPI()
+
+# If the environment variable is set then we initialise the log data for this
+logs.initialise()
 
 # In-memory storage for active websocket connections: stream_name -> list of WebSocket
 active_connections: dict[str, list[WebSocket]] = {}
@@ -28,22 +31,25 @@ async def websocket_endpoint(websocket: WebSocket, stream: str):
 
 @app.post("/publish/{stream}")
 async def publish(stream: str, message: Message):
-    if stream not in active_connections or not active_connections[stream]:
-        return {"status": "no_listeners", "stream": stream}
-    
     disconnected = []
-    for connection in active_connections[stream]:
+
+    # Log the data if it exists
+    logs.log(stream, message.data)
+
+    # Broadcast the message
+    for connection in active_connections.get(stream, []):
         try:
             await connection.send_json(message.model_dump())
         except Exception:
             disconnected.append(connection)
-    
+
+    # Clean up stale connections
     for conn in disconnected:
         active_connections[stream].remove(conn)
 
-    return {"status": "published", "listener_count": len(active_connections[stream])}
+    return {"status": "published", "listener_count": len(active_connections.get(stream, []))}
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=FABRIC_PORT)
+    uvicorn.run(app, host="0.0.0.0", port=utils.FABRIC_PORT)

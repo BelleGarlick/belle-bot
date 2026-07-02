@@ -1,5 +1,7 @@
 import json
 import threading
+
+import httpx
 import websocket
 import requests
 from .utils import FABRIC_PORT
@@ -49,3 +51,13 @@ class FabricClient:
         except Exception as e:
             print(f"Failed to publish to {stream}: {e}")
             return None
+
+    async def publish_async(self, service_name, data):
+        # Using httpx for async publishing
+        url = f"http://{self.host}:{self.port}/publish/{service_name}"
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.post(url, json={"data": data})
+                response.raise_for_status()
+            except Exception as e:
+                print(f"Failed to publish to {service_name}: {e}")
