@@ -19,6 +19,9 @@ def process_data(data):
         if isinstance(value, int) or isinstance(value, float):
             value = str(value)
 
+        if value is None:
+            value = 'null'
+
         output[key] = value
 
     return output
@@ -81,4 +84,5 @@ class FabricClient:
                 response = await client.post(url, json={"data": data})
                 response.raise_for_status()
             except Exception as e:
+                print(e)
                 print(f"Failed to publish to {service_name}: {e}")
