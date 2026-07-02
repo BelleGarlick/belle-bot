@@ -17,12 +17,3 @@ Sensors provide the robot with data from the environment.
 
 - **Camera**: Captures and publishes video frames. See [Camera README](belle_bot/sensors/cameras/readme.md).
 - **Microphone**: Captures and publishes audio data. See [Microphone README](belle_bot/sensors/microphone/readme.md).
-
-## Setup
-Prerequisit to setting up is to have python3.13 at the minimum.
-then run these commands:
->>> chmod +x setup.sh
->>> ./setup.sh
-
-And you will be able to work!
-
