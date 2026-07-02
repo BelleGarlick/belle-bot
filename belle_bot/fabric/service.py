@@ -14,7 +14,7 @@ active_connections: dict[str, list[WebSocket]] = {}
 class Message(BaseModel):
     data: dict[str, str]  # data is map of str -> base64 encoded bytes
 
-@app.websocket("/listen/{stream}")
+@app.websocket("/listen/{stream:path}")
 async def websocket_endpoint(websocket: WebSocket, stream: str):
     await websocket.accept()
     if stream not in active_connections:
@@ -29,7 +29,7 @@ async def websocket_endpoint(websocket: WebSocket, stream: str):
         if not active_connections[stream]:
             del active_connections[stream]
 
-@app.post("/publish/{stream}")
+@app.post("/publish/{stream:path}")
 async def publish(stream: str, message: Message):
     disconnected = []
 

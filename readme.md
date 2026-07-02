@@ -11,3 +11,9 @@ The **Fabric** is the central communications backbone of Belle Bot. It uses a pu
 **The Fabric must be running for other modules to function correctly**, as it facilitates all inter-service data exchange. 
 
 For more details on how to run and use the Fabric, see the [Fabric README](belle_bot/fabric/readme.md).
+
+### Sensors
+Sensors provide the robot with data from the environment.
+
+- **Camera**: Captures and publishes video frames. See [Camera README](belle_bot/sensors/cameras/readme.md).
+- **Microphone**: Captures and publishes audio data. See [Microphone README](belle_bot/sensors/microphone/readme.md).

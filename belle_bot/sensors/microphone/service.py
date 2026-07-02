@@ -1,0 +1,46 @@
+import base64
+import sounddevice as sd
+import asyncio
+import numpy as np
+
+from belle_bot.fabric import FabricClient
+from belle_bot.sensors.microphone import config
+
+CLIENT = FabricClient()
+
+audio_buffer = np.array([], dtype='int16')
+
+
+async def stream_audio():
+    global audio_buffer
+
+    def callback(indata, frames, time, status):
+        global audio_buffer
+        # Append incoming chunk to our buffer
+        audio_buffer = np.append(audio_buffer, indata.flatten())
+
+        # Once we have at least 1 second of audio (16,000 samples)
+        if len(audio_buffer) >= config.BUFFER_SIZE:
+            # Take the first 1 second
+            to_send = audio_buffer[:config.BUFFER_SIZE]
+            # Keep the remainder (if any) for the next cycle
+            audio_buffer = audio_buffer[config.BUFFER_SIZE:]
+
+            # Encode and publish
+            audio_payload = base64.b64encode(to_send).decode('utf-8')
+
+            coro = CLIENT.publish_async(config.FABRIC_ID, {
+                "audio": audio_payload,
+                "sample_rate": str(config.SAMPLE_RATE),
+                "channels": str(1)
+            })
+
+            asyncio.run_coroutine_threadsafe(coro, loop)
+
+    loop = asyncio.get_running_loop()
+    with sd.InputStream(callback=callback, channels=1, samplerate=config.SAMPLE_RATE, dtype='int16'):
+        await asyncio.Future()
+
+
+if __name__ == '__main__':
+    asyncio.run(stream_audio())

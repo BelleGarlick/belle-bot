@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import queue
 
-from belle_bot.cameras.utils import FABRIC_ID
+from belle_bot.sensors.cameras.config import FABRIC_ID
 from belle_bot.fabric import FabricClient
 
 frame_queue = queue.Queue()
