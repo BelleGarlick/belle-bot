@@ -25,4 +25,3 @@ then run these commands:
 >>> ./setup.sh
 
 And you will be able to work!
-
