@@ -15,7 +15,7 @@ CLIENT = FabricClient()
 loop = None
 
 
-model = YOLO("yolo26n-pose.pt")
+model = YOLO("yolo26n-seg.pt")
 
 # todo make this testable
 
@@ -47,7 +47,7 @@ def predict_bounding_boxes(frame, confidence_threshold=0.2):
     # todo switch this all out eventually when using onnx
     results = model(frame)
 
-    return results[0].keypoints.data.numpy()
+    return results[0]
 
 
 async def main():
@@ -58,7 +58,7 @@ async def main():
     CLIENT.listen(cameras.config.FABRIC_ID, show_frame_callback)
 
     while True:
-        print("Object Detection Running")
+        print("Segmentation Running")
 
         # Check if there is a new frame in the queue
         # In async, we wait for at least one item
@@ -79,17 +79,23 @@ async def main():
         # Run predictions
         predictions = predict_bounding_boxes(frame)
 
-        # Remove padding from predictions and frame
-        predictions[:, :, 1] = predictions[:, :, 1] - vertical_padding
+        masks = predictions.masks.xy
+        for pred in masks:
+            # Remove padding from predictions and frame
+            pred[:, 1] = pred[:, 1] - vertical_padding
 
-        # Rescale to account for original camera size
-        predictions[:, :, :] = predictions[:, :, :] * scale
+            # Rescale to account for original camera size
+            pred[:] = pred * scale
+
+        # todo check confidence
+        classes = [int(x) for x in predictions.boxes.cls.numpy().tolist()]
 
         # Publish the bounding boxes
-        await CLIENT.publish_async("vision/pose-estimation", {
+        await CLIENT.publish_async("vision/segmentation", {
             "frame_id": data.get("frame_id"),
-            "predictions": predictions,
-            "shape": json.dumps(predictions.shape),
+            "masks": np.concatenate(masks, axis=0),
+            "classes": json.dumps(classes),
+            "mask-lengths": json.dumps([x.shape[0] for x in masks]),
         })
 
 

@@ -81,7 +81,7 @@ async def main():
         predictions[:, :4] = predictions[:, :4] * scale
 
         # Publish the bounding boxes
-        await CLIENT.publish_async("vision/bounding_boxes", {
+        await CLIENT.publish_async("vision/bounding-boxes", {
             "frame_id": data.get("frame_id"),
             "predictions": predictions
         })

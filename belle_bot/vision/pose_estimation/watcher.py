@@ -24,7 +24,7 @@ def get_bounding_boxes(boxes):
 
 
 CLIENT.listen(cameras.config.FABRIC_ID, show_frame_callback)
-CLIENT.listen("vision/poses", get_bounding_boxes)
+CLIENT.listen("vision/pose-estimation", get_bounding_boxes)
 
 
 if __name__ == "__main__":
