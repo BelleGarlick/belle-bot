@@ -51,8 +51,8 @@ async def main():
 
     CLIENT.listen(cameras.config.FABRIC_ID, show_frame_callback)
 
+    print("Object Detection Running")
     while True:
-        print("Object Detection Running")
 
         # Check if there is a new frame in the queue
         # In async, we wait for at least one item

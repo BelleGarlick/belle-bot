@@ -16,6 +16,7 @@ This module allows for replaying the given event
 
 PAGE_LENGTH = 100
 CLIENT = FabricClient()
+LOOP = True
 
 async def main():
     page = 0
@@ -38,6 +39,10 @@ async def main():
 
         page += 1
         items = get_logs(limit=PAGE_LENGTH, offset=page * PAGE_LENGTH)
+
+        if LOOP and page != 0 and len(items) == 0:
+            page = 0
+            items = get_logs(limit=PAGE_LENGTH, offset=page * PAGE_LENGTH)
 
     # Wait for all background tasks to finish
     tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]

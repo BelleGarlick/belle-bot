@@ -23,7 +23,6 @@ if __name__ == "__main__":
         start_time = time.perf_counter()
 
         frame = cv2.resize(frame, (920, 512))
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         _, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), config.JPEG_QUALITY])
         frame_string = base64.b64encode(buffer).decode("utf-8")
