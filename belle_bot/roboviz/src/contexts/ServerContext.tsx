@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, type PropsWithChildren } from 'react'
 import { v4 } from 'uuid'
 
-type StreamCallback = (data: { [key: string]: unknown }) => string
+type StreamCallback = (data: { [key: string]: unknown }) => void
 
 interface FabricContextI {
     domain: string | undefined
