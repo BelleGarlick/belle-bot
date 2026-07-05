@@ -5,7 +5,7 @@ from belle_bot.fabric import FabricClient
 
 model = YOLO("yolo26n-pose.pt")
 
-image_path = "/Users/belle/Developer/belle-bot/belle_bot/pose_estimation/bus.jpg"
+image_path = "/belle_bot/vision/pose_estimation/bus.jpg"
 im = cv2.imread(image_path)[:, :, ::-1].copy()
 print(im.dtype)
 
