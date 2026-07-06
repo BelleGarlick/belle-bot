@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useFabricProvider } from '../contexts/ServerContext.tsx'
-import { RobovizWindow } from './RobovizWindow.tsx'
+import { RobovizWindow } from './RobovizWindow'
 
 const BOUNDING_BOX_ID = 'vision/bounding-boxes'
 const POSES_ID = 'vision/pose-estimation'
@@ -11,6 +11,8 @@ const FACIAL_RECOGNITION_ID = 'vision/facial-recognition'
 // todo add connections between the pose nodes
 // todo sync up the video a little smarter
 // todo add message if the data isn't available
+// todo add compute time per prediction
+// todo update the renderer to improve aspect ratio stuff
 
 export function VisionWindow() {
     const { listen, stopListening } = useFabricProvider()
@@ -23,6 +25,7 @@ export function VisionWindow() {
     // todo if no data then render a message saying that
 
     const [selectedModes, setSelectedModes] = useState([SEGMENTATION_ID])
+    const [selectedCamera, setSelectedCamera] = useState('rgb')
     const [image, setImage] = useState<HTMLImageElement>()
     const [cameraSize, setCameraSize] = useState([0, 0])
     const [boundingBoxes, setBoundingBoxes] = useState<Float32Array[]>([])
@@ -40,13 +43,12 @@ export function VisionWindow() {
                 setCameraSize(JSON.parse(x['shape']))
                 // todo workout the scale for this cos atm it's stretched over the image
             }
-            image.src = `data:image/png;base64,${x['rgb']}`
+            image.src = `data:image/png;base64,${x[selectedCamera]}`
         })
 
         const visionBoundingBoxesId = listen('vision/bounding-boxes', (x) => {
             const binaryData = Uint8Array.fromBase64(x.predictions)
-            const predictions = new Float32Array(binaryData.buffer)
-            const flatArray = new Float32Array(predictions)
+            const flatArray = new Float32Array(binaryData.buffer)
 
             const cols = 6
             const rows = flatArray.length / cols
@@ -195,19 +197,29 @@ export function VisionWindow() {
     return (
         <RobovizWindow
             title="Vision Pipeline"
-            debugText={selectedModes[0]}
+            debugText={selectedModes}
             setCanvasSize={setWindowSize}
             canvasRef={canvasRef}
-            switcher={{
-                selection: selectedModes,
-                options: [
-                    { text: 'BB', value: BOUNDING_BOX_ID },
-                    { text: 'Pose', value: POSES_ID },
-                    { text: 'Seg', value: SEGMENTATION_ID },
-                    { text: 'Faces', value: FACIAL_RECOGNITION_ID },
-                ],
-                setSelection: setSelectedModes,
-            }}
+            actions={[
+                {
+                    selection: selectedModes,
+                    options: [
+                        { text: 'BB', value: BOUNDING_BOX_ID },
+                        { text: 'Pose', value: POSES_ID },
+                        { text: 'Seg', value: SEGMENTATION_ID },
+                        { text: 'Faces', value: FACIAL_RECOGNITION_ID },
+                    ],
+                    setSelection: setSelectedModes,
+                },
+                {
+                    selection: [selectedCamera],
+                    options: [
+                        { text: 'RGB', value: 'rgb' },
+                        { text: 'Depth', value: 'depth' },
+                    ],
+                    setSelection: (x) => setSelectedCamera(x[0]),
+                },
+            ]}
         />
     )
 }

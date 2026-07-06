@@ -13,7 +13,7 @@ interface FabricContextI {
 const FabricContext = createContext<FabricContextI | null>(null)
 
 export function FabricContextProvider({ children }: PropsWithChildren) {
-    const [domain, setDomain] = useState<string>('localhost:59990')
+    const [domain, setDomain] = useState<string | undefined>('localhost:59990')
 
     const webSockets: { [key: string]: WebSocket } = {}
     const callbacks: { [key: string]: { [id: string]: StreamCallback } } = {}

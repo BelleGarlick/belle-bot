@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useFabricProvider } from '../contexts/ServerContext.tsx'
-import { RobovizWindow } from './RobovizWindow.tsx'
+import { RobovizWindow } from './RobovizWindow'
 
 export function SensorWindow() {
     const { listen, stopListening } = useFabricProvider()
@@ -28,7 +28,7 @@ export function SensorWindow() {
     return (
         <RobovizWindow
             title="Sensors"
-            debugText="sensors/camera"
+            debugText={['sensors/camera']}
             setCanvasSize={setWindowSize}
             canvasRef={canvasRef}
         />
