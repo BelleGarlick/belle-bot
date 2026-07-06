@@ -5,13 +5,12 @@ import { RobovizWindow } from './RobovizWindow.tsx'
 const BOUNDING_BOX_ID = 'vision/bounding-boxes'
 const POSES_ID = 'vision/pose-estimation'
 const SEGMENTATION_ID = 'vision/segmentation'
+const FACIAL_RECOGNITION_ID = 'vision/facial-recognition'
 
 // todo add depth
 // todo add connections between the pose nodes
 // todo sync up the video a little smarter
 // todo add message if the data isn't available
-// todo may want to pull the boxes out of pose / seg masks
-// todo add facial detection
 
 export function VisionWindow() {
     const { listen, stopListening } = useFabricProvider()
@@ -29,6 +28,7 @@ export function VisionWindow() {
     const [boundingBoxes, setBoundingBoxes] = useState<Float32Array[]>([])
     const [poses, setPoses] = useState<Float32Array[][]>([])
     const [masks, setMasks] = useState<{ class: number; mask: Float32Array }[]>([])
+    const [faces, setFaces] = useState<{ confidence: number; bbox: Float32Array }[]>([])
 
     // todo incorperate the frame pairing when rendering the data
 
@@ -103,6 +103,17 @@ export function VisionWindow() {
             setMasks(masks)
         })
 
+        const facialRecognitionListenerId = listen(FACIAL_RECOGNITION_ID, (x) => {
+            const detections = JSON.parse(x['faces'])
+
+            setFaces(
+                detections.map((det) => ({
+                    bbox: new Float32Array(Uint8Array.fromBase64(det['bbox']).buffer),
+                    confidence: det.confidence,
+                })),
+            )
+        })
+
         // todo add face detection
 
         return () => {
@@ -110,6 +121,7 @@ export function VisionWindow() {
             stopListening(BOUNDING_BOX_ID, visionBoundingBoxesId)
             stopListening(POSES_ID, poseEstimationListenerId)
             stopListening(POSES_ID, segmentationsListenerId)
+            stopListening(FACIAL_RECOGNITION_ID, facialRecognitionListenerId)
         }
     }, [listen, stopListening])
 
@@ -153,15 +165,29 @@ export function VisionWindow() {
 
         if (selectedModes.includes(SEGMENTATION_ID)) {
             masks.forEach((x) => {
-                if (x.class !== 0)
-                    return;
+                if (x.class !== 0) return
 
                 ctx!.beginPath()
                 ctx!.fillStyle = `rgb(0, 255, 0, 0.3)`
                 for (let i = 0; i < x.mask.length; i += 2) {
-                    ctx!.lineTo(x.mask[i] * scale, x.mask[i + 1] * scale, 7, 0, 2 * Math.PI)
+                    ctx!.lineTo(x.mask[i] * scale, x.mask[i + 1] * scale)
                 }
                 ctx!.fill()
+            })
+        }
+
+        if (selectedModes.includes(FACIAL_RECOGNITION_ID)) {
+            faces.forEach((x) => {
+                ctx!.beginPath()
+                ctx!.rect(
+                    x.bbox[0] * scale,
+                    x.bbox[1] * scale,
+                    (x.bbox[2] - x.bbox[0]) * scale,
+                    (x.bbox[3] - x.bbox[1]) * scale,
+                )
+                ctx!.strokeStyle = `rgb(0, 255, 0)`
+                ctx!.lineWidth = 5
+                ctx!.stroke()
             })
         }
     }, [image, windowSize, boundingBoxes, poses, cameraSize])
@@ -178,6 +204,7 @@ export function VisionWindow() {
                     { text: 'BB', value: BOUNDING_BOX_ID },
                     { text: 'Pose', value: POSES_ID },
                     { text: 'Seg', value: SEGMENTATION_ID },
+                    { text: 'Faces', value: FACIAL_RECOGNITION_ID },
                 ],
                 setSelection: setSelectedModes,
             }}
