@@ -1,5 +1,6 @@
 import asyncio
 import json
+import time
 
 import cv2
 import numpy as np
@@ -19,6 +20,7 @@ loop = None
 model = YOLO("yolo26n-seg.pt")
 
 # todo make this testable
+# todo only segment on people as its slowing stuff down
 
 def show_frame_callback(data):
     loop.call_soon_threadsafe(frame_queue.put_nowait, data)
@@ -71,6 +73,8 @@ async def main():
 
         frame = parse_camera_stream(data["rgb"])
 
+        start_time = time.time()
+
         # Apply padding so it's square for the image
         frame, scale, vertical_padding = letterbox_image(frame, size=640)
 
@@ -88,12 +92,15 @@ async def main():
         # todo check confidence
         classes = [int(x) for x in predictions.boxes.cls.numpy().tolist()]
 
+        end_time = time.time()
+
         # Publish the bounding boxes
         await CLIENT.publish_async("vision/segmentation", {
             "frame_id": data.get("frame_id"),
             "masks": np.concatenate(masks, axis=0),
             "classes": json.dumps(classes),
             "mask-lengths": json.dumps([x.shape[0] for x in masks]),
+            "__duration": (end_time - start_time) * 1000,  # show performance in milliseconds
         })
 
 

@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import json
+import time
 
 from insightface.app import FaceAnalysis
 
@@ -39,6 +40,8 @@ async def main():
         while not frame_queue.empty():
             data = frame_queue.get_nowait()
 
+        start_time = time.time()
+
         frame = parse_camera_stream(data["rgb"])
 
         # Run predictions
@@ -52,11 +55,14 @@ async def main():
                 "bbox": base64.b64encode(face.bbox.tobytes()).decode("utf-8"),
             })
 
+        end_time = time.time()
+
         # todo talk to the personal knowledge to work out which face is which
 
         await CLIENT.publish_async("vision/facial-recognition", {
             "frame_id": data.get("frame_id"),
-            "faces": json.dumps(detections)
+            "faces": json.dumps(detections),
+            "__duration": (end_time - start_time) * 1000,  # show performance in milliseconds
         })
 
 
