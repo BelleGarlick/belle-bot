@@ -3,7 +3,8 @@ import {
     BOTTOM_BAR_HEIGHT,
     DebugText,
     DebugTextContainer,
-    ResizeCorner, TOPBAR_HEIGHT,
+    ResizeCorner,
+    TOPBAR_HEIGHT,
     WindowBottomBar,
     WindowContainer,
     WindowTopBar,
@@ -24,7 +25,7 @@ export function RobovizWindow({
     title: string
     setCanvasSize: (val: { width: number; height: number }) => void
     canvasRef: RefObject<HTMLCanvasElement | undefined>
-    debugText: string[]
+    debugText?: string[]
     actions?: SwitcherI[]
 }) {
     const [zIndex, setZIndex] = useState(0)
@@ -123,7 +124,7 @@ export function RobovizWindow({
                 style={{
                     height: innerHeight,
                     width: windowSize.width,
-                    display: 'block'
+                    display: 'block',
                 }}
             />
 
