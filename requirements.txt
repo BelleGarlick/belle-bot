@@ -8,3 +8,4 @@ pyrealsense2
 torch
 httpx
 numpy
+pyserial
