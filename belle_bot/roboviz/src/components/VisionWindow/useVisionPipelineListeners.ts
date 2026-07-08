@@ -30,7 +30,7 @@ export function useVisionPipelineListeners(selectedCamera: string) {
                 setCameraSize(JSON.parse(x['shape']))
                 // todo workout the scale for this cos atm it's stretched over the image
             }
-            image.src = `data:image/png;base64,${x[selectedCamera]}`
+            image.src = `data:image/jpeg;base64,${x[selectedCamera]}`
         })
 
         const visionBoundingBoxesId = listen('vision/bounding-boxes', (x) => {
@@ -114,7 +114,7 @@ export function useVisionPipelineListeners(selectedCamera: string) {
             stopListening(FACIAL_RECOGNITION_ID, facialRecognitionListenerId)
         }
         // todo dont do it on listener
-    }, [listen, stopListening])
+    }, [listen, stopListening, selectedCamera])
 
     return {
         image,

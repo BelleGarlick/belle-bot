@@ -6,3 +6,5 @@ websockets
 sounddevice
 pyrealsense2
 torch
+httpx
+numpy
