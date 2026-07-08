@@ -1,4 +1,4 @@
-import { useFabricProvider } from '../../contexts/ServerContext.tsx'
+import { useFabricProvider } from '../../Roboviz/contexts/ServerContext.tsx'
 import { useEffect, useState } from 'react'
 
 export const BOUNDING_BOX_ID = 'vision/bounding-boxes'

@@ -12,7 +12,7 @@ import {
 import { Switcher, type SwitcherI } from './Switcher.tsx'
 
 class ZIndexCount {
-    static counter: number = -1000
+    static counter: number = 1
 }
 
 export function RobovizWindow({
@@ -43,7 +43,7 @@ export function RobovizWindow({
     }, [])
 
     const bottomBarHeight = actions ? BOTTOM_BAR_HEIGHT : 0
-    const innerHeight = windowSize.height - TOPBAR_HEIGHT - bottomBarHeight;
+    const innerHeight = windowSize.height - TOPBAR_HEIGHT - bottomBarHeight
 
     const canvasSize = useMemo(
         () => ({

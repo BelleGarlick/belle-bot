@@ -1,23 +1,15 @@
 import './App.css'
-import { SensorWindow } from './components/SensorWindow'
-import { VisionWindow } from './components/VisionWindow'
-import { ComponentConnectionWindow } from './components/ComponentConnectionWindow'
-
-// todo
-//  add toolbar
-//  add way to view performance of different units on the system
-//  add system monitoring metrics - cpu usage, memory usage etc
-//  add other components
+import { RoboViz } from './Roboviz'
 
 function App() {
     return (
-        <>
-            <SensorWindow />
-            <VisionWindow />
-            {/*<VisionWindow />*/}
-
-            {/*<ComponentConnectionWindow />*/}
-        </>
+        <div style={{ height: '100vh' }}>
+            <RoboViz
+                style={{
+                    height: '100%',
+                }}
+            />
+        </div>
     )
 }
 

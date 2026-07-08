@@ -1,6 +1,6 @@
 import styled from '@emotion/styled'
+import { THEME } from '../../Roboviz/utils.tsx'
 
-export const THEME = '#aa33ff'
 export const TOPBAR_HEIGHT = 36
 export const BOTTOM_BAR_HEIGHT = 40
 
