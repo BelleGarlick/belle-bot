@@ -1,4 +1,5 @@
-import { BottomBarSwitcher, THEME } from './styles'
+import { BottomBarSwitcher } from './styles'
+import { THEME } from '../../Roboviz/utils.tsx'
 
 export interface SwitcherI {
     selection: string[]

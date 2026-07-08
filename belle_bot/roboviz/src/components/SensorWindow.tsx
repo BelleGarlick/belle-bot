@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useFabricProvider } from '../contexts/ServerContext.tsx'
+import { useFabricProvider } from '../Roboviz/contexts/ServerContext.tsx'
 import { RobovizWindow } from './RobovizWindow'
 
 export function SensorWindow() {
