@@ -9,3 +9,4 @@ torch
 httpx
 numpy
 pyserial
+pynmea2
