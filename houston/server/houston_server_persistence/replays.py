@@ -10,7 +10,7 @@ TABLE_NAME = "REPLAYS"
 
 def initialise():
     houston_server_gateways.sqlite.create_table(TABLE_NAME)
-    houston_server_gateways.files.initialise(TABLE_NAME)
+    houston_server_gateways.files.initialise()
 
 
 def save_replay(replay: Replay) -> Replay:
@@ -46,4 +46,8 @@ def delete_replay(replay_id: str):
 
 def move_replay_file(source_path: str, replay_file_id: str):
     # todo figure this out more. maybe handled in the core
-    houston_server_gateways.files.move_to_store(source_path, TABLE_NAME + "/" + replay_file_id + "." + file_type)
+    file_type = source_path.split(".")[-1]
+    houston_server_gateways.files.move_to_store(
+        source_path,
+        TABLE_NAME + "/" + replay_file_id + "." + file_type
+    )

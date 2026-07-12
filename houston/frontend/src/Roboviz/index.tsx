@@ -1,8 +1,8 @@
-import { SensorWindow } from '../components/SensorWindow.tsx'
-import { VisionWindow } from '../components/VisionWindow'
-import { type CSSProperties, type ReactNode, useState } from 'react'
-import styled from '@emotion/styled'
-import { THEME } from './utils.tsx'
+import { SensorWindow } from "../components/SensorWindow.tsx";
+import { VisionWindow } from "../components/VisionWindow";
+import { type CSSProperties, type ReactNode, useState } from "react";
+import styled from "@emotion/styled";
+import { THEME } from "./utils.tsx";
 
 // todo
 //  add toolbar
@@ -17,40 +17,39 @@ const ToolbarButton = styled.button`
     background-color: #222222;
     color: ${THEME};
     font-weight: bold;
-    font-family: monospace;
-`
+`;
 
 export function RoboViz({ style }: { style?: CSSProperties }) {
-    const [windows, setWindows] = useState<ReactNode[]>([])
+    const [windows, setWindows] = useState<ReactNode[]>([]);
 
     return (
         <div
             style={{
-                ...style,
-                flexDirection: 'row',
-                display: 'grid',
+                flexDirection: "row",
+                display: "grid",
                 flexGrow: 1,
-                gridTemplateColumns: '100px auto',
+                gridTemplateColumns: "100px auto",
+                ...style,
             }}
         >
             <div
                 style={{
-                    height: '100%',
-                    flexDirection: 'column',
-                    display: 'flex',
-                    borderRight: '2px solid #112',
+                    height: "100%",
+                    flexDirection: "column",
+                    display: "flex",
+                    borderRight: "2px solid #112",
                 }}
             >
                 <ToolbarButton
                     onClick={() => {
-                        setWindows([...windows, <SensorWindow />])
+                        setWindows([...windows, <SensorWindow />]);
                     }}
                 >
                     Sensors
                 </ToolbarButton>
                 <ToolbarButton
                     onClick={() => {
-                        setWindows([...windows, <VisionWindow />])
+                        setWindows([...windows, <VisionWindow />]);
                     }}
                 >
                     Vision
@@ -58,12 +57,12 @@ export function RoboViz({ style }: { style?: CSSProperties }) {
             </div>
             <div
                 style={{
-                    position: 'relative',
-                    overflow: 'hidden',
+                    position: "relative",
+                    overflow: "hidden",
                 }}
             >
                 {windows}
             </div>
         </div>
-    )
+    );
 }
