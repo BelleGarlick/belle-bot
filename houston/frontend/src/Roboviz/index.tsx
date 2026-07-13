@@ -1,4 +1,4 @@
-import { SensorWindow } from "../components/SensorWindow.tsx";
+import { SensorWindow } from "../components/SensorsWindow";
 import { VisionWindow } from "../components/VisionWindow";
 import { type CSSProperties, type ReactNode, useState } from "react";
 import styled from "@emotion/styled";

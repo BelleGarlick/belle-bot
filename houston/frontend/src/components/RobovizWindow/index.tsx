@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo, type RefObject } from 'react'
+import { useEffect, useState, useRef, useMemo, type RefObject } from "react";
 import {
     BOTTOM_BAR_HEIGHT,
     DebugText,
@@ -8,11 +8,12 @@ import {
     WindowBottomBar,
     WindowContainer,
     WindowTopBar,
-} from './styles.ts'
-import { Switcher, type SwitcherI } from './Switcher.tsx'
+} from "./styles.ts";
+import { Switcher, type SwitcherI } from "./Switcher.tsx";
+import type { WindowSize } from "./utils.ts";
 
 class ZIndexCount {
-    static counter: number = 1
+    static counter: number = 1;
 }
 
 export function RobovizWindow({
@@ -22,28 +23,31 @@ export function RobovizWindow({
     debugText,
     actions,
 }: {
-    title: string
-    setCanvasSize: (val: { width: number; height: number }) => void
-    canvasRef: RefObject<HTMLCanvasElement | undefined>
-    debugText?: string[]
-    actions?: SwitcherI[]
+    title: string;
+    setCanvasSize: (val: { width: number; height: number }) => void;
+    canvasRef: RefObject<HTMLCanvasElement | null>;
+    debugText?: string[];
+    actions?: SwitcherI[];
 }) {
-    const [zIndex, setZIndex] = useState(0)
+    const [zIndex, setZIndex] = useState(0);
 
-    const [windowPosition, setWindowPosition] = useState({ top: 10, left: 10 })
-    const [windowSize, setWindowSize] = useState({ width: 500, height: 350 })
-    const [isDragging, setIsDragging] = useState(false)
-    const [isResizing, setIsResizing] = useState(false)
-    const dragStartRef = useRef({ x: 0, y: 0 })
+    const [windowPosition, setWindowPosition] = useState({ top: 10, left: 10 });
+    const [windowSize, setWindowSize] = useState<WindowSize>({
+        width: 500,
+        height: 350,
+    });
+    const [isDragging, setIsDragging] = useState(false);
+    const [isResizing, setIsResizing] = useState(false);
+    const dragStartRef = useRef({ x: 0, y: 0 });
 
     useEffect(() => {
-        ZIndexCount.counter += 1
+        ZIndexCount.counter += 1;
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        setZIndex(ZIndexCount.counter)
-    }, [])
+        setZIndex(ZIndexCount.counter);
+    }, []);
 
-    const bottomBarHeight = actions ? BOTTOM_BAR_HEIGHT : 0
-    const innerHeight = windowSize.height - TOPBAR_HEIGHT - bottomBarHeight
+    const bottomBarHeight = actions ? BOTTOM_BAR_HEIGHT : 0;
+    const innerHeight = windowSize.height - TOPBAR_HEIGHT - bottomBarHeight;
 
     const canvasSize = useMemo(
         () => ({
@@ -51,48 +55,51 @@ export function RobovizWindow({
             height: innerHeight * 2,
         }),
         [windowSize.width, windowSize.height, innerHeight],
-    )
+    );
 
     useEffect(() => {
-        setCanvasSize(canvasSize)
-    }, [canvasSize, setCanvasSize])
+        setCanvasSize(canvasSize);
+    }, [canvasSize, setCanvasSize]);
 
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
             if (isDragging) {
-                const deltaX = e.clientX - dragStartRef.current.x
-                const deltaY = e.clientY - dragStartRef.current.y
-                setWindowPosition((prev) => ({ top: prev.top + deltaY, left: prev.left + deltaX }))
-                dragStartRef.current = { x: e.clientX, y: e.clientY }
+                const deltaX = e.clientX - dragStartRef.current.x;
+                const deltaY = e.clientY - dragStartRef.current.y;
+                setWindowPosition((prev) => ({
+                    top: prev.top + deltaY,
+                    left: prev.left + deltaX,
+                }));
+                dragStartRef.current = { x: e.clientX, y: e.clientY };
             } else if (isResizing) {
                 const newWidth = Math.max(
                     200,
                     windowSize.width + (e.clientX - dragStartRef.current.x),
-                )
+                );
                 const newHeight = Math.max(
                     150,
                     windowSize.height + (e.clientY - dragStartRef.current.y),
-                )
-                setWindowSize({ width: newWidth, height: newHeight })
-                dragStartRef.current = { x: e.clientX, y: e.clientY }
+                );
+                setWindowSize({ width: newWidth, height: newHeight });
+                dragStartRef.current = { x: e.clientX, y: e.clientY };
             }
-        }
+        };
 
         const handleMouseUp = () => {
-            setIsDragging(false)
-            setIsResizing(false)
-        }
+            setIsDragging(false);
+            setIsResizing(false);
+        };
 
         if (isDragging || isResizing) {
-            window.addEventListener('mousemove', handleMouseMove)
-            window.addEventListener('mouseup', handleMouseUp)
+            window.addEventListener("mousemove", handleMouseMove);
+            window.addEventListener("mouseup", handleMouseUp);
         }
 
         return () => {
-            window.removeEventListener('mousemove', handleMouseMove)
-            window.removeEventListener('mouseup', handleMouseUp)
-        }
-    }, [isDragging, isResizing, windowSize.width, windowSize.height])
+            window.removeEventListener("mousemove", handleMouseMove);
+            window.removeEventListener("mouseup", handleMouseUp);
+        };
+    }, [isDragging, isResizing, windowSize.width, windowSize.height]);
 
     return (
         <WindowContainer
@@ -107,11 +114,11 @@ export function RobovizWindow({
             <WindowTopBar
                 onMouseDown={(e) => {
                     if (ZIndexCount.counter != zIndex) {
-                        ZIndexCount.counter += 1
-                        setZIndex(ZIndexCount.counter)
+                        ZIndexCount.counter += 1;
+                        setZIndex(ZIndexCount.counter);
                     }
-                    setIsDragging(true)
-                    dragStartRef.current = { x: e.clientX, y: e.clientY }
+                    setIsDragging(true);
+                    dragStartRef.current = { x: e.clientX, y: e.clientY };
                 }}
             >
                 {title}
@@ -124,14 +131,14 @@ export function RobovizWindow({
                 style={{
                     height: innerHeight,
                     width: windowSize.width,
-                    display: 'block',
+                    display: "block",
                 }}
             />
 
             <ResizeCorner
                 onMouseDown={(e) => {
-                    setIsResizing(true)
-                    dragStartRef.current = { x: e.clientX, y: e.clientY }
+                    setIsResizing(true);
+                    dragStartRef.current = { x: e.clientX, y: e.clientY };
                 }}
             />
 
@@ -153,5 +160,5 @@ export function RobovizWindow({
                 ))}
             </DebugTextContainer>
         </WindowContainer>
-    )
+    );
 }
