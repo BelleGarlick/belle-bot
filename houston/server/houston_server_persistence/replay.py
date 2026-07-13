@@ -1,5 +1,4 @@
 import datetime
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -12,15 +11,19 @@ class Replay(BaseModel):
 
     hardware_version: str
 
+    physical_device: str
+
     filename: str
 
     path: str
 
-    description: Optional[str] = None
+    description: str | None = None
 
-    start_time: datetime.datetime
+    start_time: datetime.datetime | None = None
 
-    end_time: datetime.datetime
+    end_time: datetime.datetime | None = None
+
+    upload_time: datetime.datetime
 
     permanent: bool = False
 

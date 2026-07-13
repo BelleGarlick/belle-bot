@@ -1,10 +1,10 @@
 from fastapi import FastAPI
-from houston.server.houston_server_api.routes.replays import replay_router
+from houston.server.houston_server_api import routes
 
 app = FastAPI()
 
-app.include_router(replay_router)
-# app.include_router(models_router)
+app.include_router(routes.replay_router)
+app.include_router(routes.models_router)
 # app.include_router(dataset_router)
 
 

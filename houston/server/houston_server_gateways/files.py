@@ -27,3 +27,13 @@ def delete_from_store(path: str):
     """
     if os.path.exists(path):
         os.remove(path)
+
+
+def save_upload(directory_name, upload, model_id):
+    file_type = upload.filename.split(".")[-1]
+    file_path = directory_name + "/" + model_id + "." + file_type
+
+    with open(file_path, "wb+") as destination:
+        destination.write(upload.file.read())
+
+    return file_path
