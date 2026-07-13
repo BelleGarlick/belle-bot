@@ -2,7 +2,7 @@ import serial
 import pynmea2
 import time
 
-SERIAL_PORT = '/dev/ttyACM0'
+SERIAL_PORT = '/dev/cu.usbmodem1301'
 BAUD_RATE = 9600  # Change to 38400 if characters become unreadable
 
 

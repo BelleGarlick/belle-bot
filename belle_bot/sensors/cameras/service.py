@@ -12,7 +12,6 @@ from belle_bot.sensors.cameras import config
 CLIENT = FabricClient()
 
 if __name__ == "__main__":
-
     import pyrealsense2 as rs
 
     pipe = rs.pipeline()
