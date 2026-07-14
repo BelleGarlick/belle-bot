@@ -1,4 +1,4 @@
-from houston.server import houston_server_gateways
+import houston_server_gateways
 
 
 class PersistenceManager[T]:

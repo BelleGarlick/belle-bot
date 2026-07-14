@@ -1,7 +1,7 @@
 import datetime
 
 from fastapi import UploadFile, APIRouter, HTTPException, Query, Form, File, Response
-from houston.server.houston_server_core import replays as core
+from houston_server_core import replays as core
 from houston_server_persistence.replay import Replay
 
 replay_router = APIRouter(prefix="/replays", tags=["Replays"])

@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from houston.server.houston_server_api import routes
+from houston_server_api import routes
 
 app = FastAPI()
 

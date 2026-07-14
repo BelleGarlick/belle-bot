@@ -1,5 +1,5 @@
 from fastapi import UploadFile, APIRouter, HTTPException, Query, Form, File, Response
-from houston.server.houston_server_core import models as core
+from houston_server_core import models as core
 from houston_server_persistence.models import Model
 
 models_router = APIRouter(prefix="/models", tags=["Models"])

@@ -59,11 +59,11 @@ export function NavBar({
                 replays
             </NavBarLink>
 
+            <NavBarLink onClick={() => setPage(Page.MODELS)}>models</NavBarLink>
+
             <NavBarLink onClick={() => setPage(Page.DATASETS)}>
                 datasets
             </NavBarLink>
-
-            <NavBarLink onClick={() => setPage(Page.MODELS)}>models</NavBarLink>
 
             <NavBarLink onClick={() => setPage(Page.ROBOVIZ)}>
                 roboviz

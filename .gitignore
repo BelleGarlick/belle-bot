@@ -1,4 +1,4 @@
 .DS_Store
 .idea/
 *.pyc
-houston/frontend/node_modules
+belle_bot/houston/frontend/node_modules
