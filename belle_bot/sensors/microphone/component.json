@@ -1,0 +1,12 @@
+{
+  "name": "sensors/microphone",
+  "version": "1.0",
+  "runtime": "python",
+  "entry": "service.py",
+  "environ": {
+    "FABRIC_ID": "sensors/microphone",
+    "SAMPLE_RATE": 16000,
+    "BUFFER_SIZE": 8000,
+    "_": "^half a second of audio"
+  }
+}

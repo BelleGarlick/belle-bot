@@ -1,0 +1,9 @@
+{
+  "name": "sensors/imu",
+  "version": "1.0",
+  "runtime": "python",
+  "entry": "service.py",
+  "environ": {
+    "FABRIC_ID": "sensors/imu"
+  }
+}

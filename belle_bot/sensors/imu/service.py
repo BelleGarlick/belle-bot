@@ -10,7 +10,7 @@ from belle_bot.fabric import FabricClient
 PORT = '/dev/cu.usbserial-130'
 BAUDRATE = 9600
 HZ_10_INTERVAL = 0.1  # 10hz rate
-FABRIC_SERVICE_ID = "sensors/odometry"
+FABRIC_SERVICE_ID = "sensors/imu"
 CLIENT = FabricClient()
 
 

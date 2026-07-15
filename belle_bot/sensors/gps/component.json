@@ -1,0 +1,6 @@
+{
+  "name": "sensors/gps",
+  "version": "1.0",
+  "runtime": "python",
+  "entry": "service.py"
+}
