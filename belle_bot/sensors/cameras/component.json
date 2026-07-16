@@ -2,10 +2,5 @@
   "name": "sensors/camera",
   "version": "1.0",
   "runtime": "python",
-  "entry": "service.py",
-  "environ": {
-    "FABRIC_ID": "sensors/camera",
-    "MAX_FPS": 10,
-    "JPEG_QUALITY": 60
-  }
+  "entry": "service.py"
 }

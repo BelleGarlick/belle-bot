@@ -7,9 +7,11 @@ import cv2
 import numpy as np
 
 from belle_bot.fabric import FabricClient
-from belle_bot.sensors.cameras import config
 
 CLIENT = FabricClient()
+FABRIC_ID = "sensors/camera"
+MAX_FPS = 10
+JPEG_QUALITY = 60
 
 if __name__ == "__main__":
     import pyrealsense2 as rs
@@ -35,7 +37,7 @@ if __name__ == "__main__":
     # colorizer.set_option(rs.option.visual_preset, 2)
 
     try:
-        target_interval = 1.0 / config.MAX_FPS
+        target_interval = 1.0 / MAX_FPS
         while True:
             start_time = time.perf_counter()
             frames = pipe.wait_for_frames()
@@ -76,12 +78,12 @@ if __name__ == "__main__":
             depth_frame_string = base64.b64encode(depth_buffer).decode("utf-8")
             color_frame_string = base64.b64encode(color_buffer).decode("utf-8")
 
-            CLIENT.publish(config.FABRIC_ID, {
+            CLIENT.publish(FABRIC_ID, {
                 "frame_id": str(uuid.uuid4()),
                 "rgb": color_frame_string,
                 "depth": depth_frame_string,
                 "shape": json.dumps(color_image.shape),
-                "jpeg_quality": config.JPEG_QUALITY,
+                "jpeg_quality": JPEG_QUALITY,
             })
 
             # Rate limit the publishing rate to match config.MAX_FPS
