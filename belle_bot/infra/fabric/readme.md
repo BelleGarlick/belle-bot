@@ -11,15 +11,15 @@ The Fabric service is a FastAPI application that acts as the central hub for all
 ### Basic Run (Without Logging)
 To run the fabric without persistent logging:
 ```bash
-python3 belle_bot/fabric/service.py
+python3 belle_bot/infra/fabric/service.py
 ```
 
 ### Running with Logging
-To enable logging of all messages to a SQLite database, set the `FABRIC_PATH` environment variable:
+To enable logging of all messages to a SQLite database, set the `SAVE_REPLAY_ENABLED` environment variable to `true`:
 ```bash
-FABRIC_PATH=<event_name>.db python3 belle_bot/fabric/service.py
+SAVE_REPLAY_ENABLED=true python3 belle_bot/infra/fabric/service.py
 ```
-This will create or use `<event_name>.db` to store all published messages, allowing for later analysis and replaying.
+Logs will be stored in 10-minute chunks in the `replays/` directory. Each chunk file is named with a UUIDv4.
 
 ## Usage
 
@@ -42,4 +42,4 @@ client.listen("another_stream", print)
 ```
 
 ### Replaying Logs
-You can use the replayer tool in `belle_bot/fabric/logs/replayer.py` to play back events stored in the database.
+You can use the replayer tool in `belle_bot/infra/fabric/logs/replayer.py` to play back events stored in the `replays/` directory.
