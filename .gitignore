@@ -2,3 +2,7 @@
 .idea/
 *.pyc
 belle_bot/houston/frontend/node_modules
+
+# The files here contain drivers which allow for gps and imu to run 
+jetson_kernel
+
