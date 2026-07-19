@@ -6,7 +6,7 @@ from belle_bot.fabric import FabricClient
 
 CLIENT = FabricClient()
 
-PORT = '/dev/cu.PL2303G-USBtoUART1130'
+PORT = '/dev/ttyUSB0'
 BAUDRATE = 115200
 FABRIC_ID = "sensors/gps"
 
