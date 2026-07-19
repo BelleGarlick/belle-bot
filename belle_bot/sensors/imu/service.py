@@ -5,7 +5,7 @@ import numpy as np
 import struct
 from serial_asyncio import open_serial_connection
 
-from belle_bot.fabric import FabricClient
+from belle_bot.infra.fabric import FabricClient
 
 PORT = '/dev/cu.usbserial-130'
 BAUDRATE = 9600

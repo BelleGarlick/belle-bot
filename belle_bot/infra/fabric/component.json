@@ -1,0 +1,6 @@
+{
+  "name": "infra/fabric",
+  "version": "1.0",
+  "runtime": "python",
+  "entry": "service.py"
+}

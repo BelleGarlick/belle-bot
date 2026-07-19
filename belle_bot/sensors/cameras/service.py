@@ -6,7 +6,7 @@ import uuid
 import cv2
 import numpy as np
 
-from belle_bot.fabric import FabricClient
+from belle_bot.infra.fabric import FabricClient
 
 CLIENT = FabricClient()
 FABRIC_ID = "sensors/camera"

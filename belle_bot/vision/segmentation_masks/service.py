@@ -8,7 +8,7 @@ import numpy as np
 from ultralytics import YOLO
 
 from belle_bot.sensors import cameras
-from belle_bot.fabric import FabricClient
+from belle_bot.infra.fabric import FabricClient
 from belle_bot.sensors.cameras.utils import parse_camera_stream
 from belle_bot.vision.utils import letterbox_image
 

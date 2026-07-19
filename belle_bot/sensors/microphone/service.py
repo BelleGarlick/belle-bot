@@ -5,7 +5,7 @@ import sounddevice as sd
 import asyncio
 import numpy as np
 
-from belle_bot.fabric import FabricClient
+from belle_bot.infra.fabric import FabricClient
 
 CLIENT = FabricClient()
 

@@ -1,7 +1,7 @@
 import sounddevice as sd
 import numpy as np
 import base64
-from belle_bot.fabric import FabricClient
+from belle_bot.infra.fabric import FabricClient
 from belle_bot.sensors.microphone import config
 
 # Initialize the output stream

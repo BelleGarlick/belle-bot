@@ -2,7 +2,7 @@ import asyncio
 import time
 import pynmea2
 from serial_asyncio import open_serial_connection
-from belle_bot.fabric import FabricClient
+from belle_bot.infra.fabric import FabricClient
 
 CLIENT = FabricClient()
 

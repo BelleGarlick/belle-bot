@@ -1,8 +1,6 @@
 import cv2
 from ultralytics import YOLO
 
-from belle_bot.fabric import FabricClient
-
 model = YOLO("yolo26n-pose.pt")
 
 image_path = "/belle_bot/vision/pose_estimation/bus.jpg"
