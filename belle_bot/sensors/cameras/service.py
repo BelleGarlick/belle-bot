@@ -71,9 +71,11 @@ if __name__ == "__main__":
             color_bgr = cv2.cvtColor(color_image, cv2.COLOR_RGB2BGR)
 
             # Compress both as standard 8-bit BGR images
-            encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY]
-            _, depth_buffer = cv2.imencode('.jpg', depth_bgr, encode_param)
-            _, color_buffer = cv2.imencode('.jpg', color_bgr, encode_param)
+            color_encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY]
+            _, color_buffer = cv2.imencode('.jpg', color_bgr, color_encode_param)
+            
+            depth_encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 30]
+            _, depth_buffer = cv2.imencode('.jpg', depth_bgr, depth_encode_param)
 
             CLIENT.publish(FABRIC_ID, {
                 "frame_id": str(uuid.uuid4()),
