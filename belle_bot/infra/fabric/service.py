@@ -35,6 +35,7 @@ async def publish(stream: str, message: Request):
 
     body = await message.body()
     body = body.decode("utf-8")
+    logs.log(stream, body)
 
     # Broadcast the message
     disconnected = []

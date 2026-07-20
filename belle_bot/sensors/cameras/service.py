@@ -12,6 +12,9 @@ FABRIC_ID = "sensors/camera"
 MAX_FPS = 10
 JPEG_QUALITY = 60
 
+# how to encode the depth data. it's not used in the system, just for roboviz. doesn't need to be as high
+DEPTH_JPEG_QUALITY = 40
+
 if __name__ == "__main__":
     import pyrealsense2 as rs
 
@@ -75,7 +78,7 @@ if __name__ == "__main__":
             color_encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY]
             _, color_buffer = cv2.imencode('.jpg', color_bgr, color_encode_param)
 
-            depth_encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 30]
+            depth_encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), DEPTH_JPEG_QUALITY]
             _, depth_buffer = cv2.imencode('.jpg', depth_bgr, depth_encode_param)
 
             CLIENT.publish(FABRIC_ID, {

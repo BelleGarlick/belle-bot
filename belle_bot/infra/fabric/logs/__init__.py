@@ -56,7 +56,7 @@ def initialise(path: Path):
     conn.close()
 
 
-def log(service_name: str, data: dict[str, str]):
+def log(service_name: str, data: str):
     now = time.time()
     # Force use time.time() explicitly in log to pick up mock if present
     path = _get_chunk_path(now)
