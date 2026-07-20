@@ -1,4 +1,3 @@
-import base64
 import json
 import time
 import uuid
@@ -50,18 +49,18 @@ if __name__ == "__main__":
                 frames = extra_frames
 
             aligned_frames = align.process(frames)
-            depth_frame = aligned_frames.get_depth_frame()
+            depth_raw = aligned_frames.get_depth_frame()
             color_frame = aligned_frames.get_color_frame()
 
             # Check if frames are valid
-            if not depth_frame or not color_frame:
+            if not depth_raw or not color_frame:
                 continue
 
             # Fill missing depth values
-            depth_frame = hole_filler.process(depth_frame)
+            depth_raw = hole_filler.process(depth_raw)
 
             # Convert depth frame to an 8-bit RGB colorized frame
-            colorized_depth_frame = colorizer.colorize(depth_frame)
+            colorized_depth_frame = colorizer.colorize(depth_raw)
 
             # Convert both to numpy arrays
             depth_image_rgb = np.asanyarray(colorized_depth_frame.get_data())
@@ -76,13 +75,11 @@ if __name__ == "__main__":
             _, depth_buffer = cv2.imencode('.jpg', depth_bgr, encode_param)
             _, color_buffer = cv2.imencode('.jpg', color_bgr, encode_param)
 
-            depth_frame_string = base64.b64encode(depth_buffer).decode("utf-8")
-            color_frame_string = base64.b64encode(color_buffer).decode("utf-8")
-
             CLIENT.publish(FABRIC_ID, {
                 "frame_id": str(uuid.uuid4()),
-                "rgb": color_frame_string,
-                "depth": depth_frame_string,
+                "rgb": color_buffer,
+                "depth_raw": depth_raw,
+                "depth": depth_buffer,
                 "shape": json.dumps(color_image.shape),
                 "jpeg_quality": JPEG_QUALITY,
             })
