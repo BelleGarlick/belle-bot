@@ -82,7 +82,7 @@ if __name__ == "__main__":
             depth_encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), DEPTH_JPEG_QUALITY]
             _, depth_buffer = cv2.imencode('.jpg', depth_bgr, depth_encode_param)
 
-            CLIENT.publish_async(FABRIC_ID, {
+            CLIENT.publish(FABRIC_ID, {
                 "service_name": FABRIC_ID,
                 "frame_id": str(uuid.uuid4()),
                 "rgb": color_buffer,
