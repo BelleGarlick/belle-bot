@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 
 from belle_bot.infra.fabric import utils
@@ -14,14 +16,22 @@ async def websocket_endpoint(websocket: WebSocket, stream: str):
     if stream not in active_connections:
         active_connections[stream] = []
     active_connections[stream].append(websocket)
+
     try:
+        # Keep the connection alive indefinitely without expecting client messages
         while True:
-            # Keep the connection open and wait for messages (though we mostly push)
-            await websocket.receive_text()
+            # Send a heartbeat ping every 20 seconds to prevent timeouts
+            await websocket.send_json({"type": "ping"})
+            await asyncio.sleep(20)
+
     except WebSocketDisconnect:
-        active_connections[stream].remove(websocket)
-        if not active_connections[stream]:
-            del active_connections[stream]
+        print(f"Client disconnected from stream: {stream}")
+    finally:
+        # Cleanup guarantees this runs even if an unexpected error occurs
+        if websocket in active_connections.get(stream, []):
+            active_connections[stream].remove(websocket)
+            if not active_connections[stream]:
+                del active_connections[stream]
 
 
 @app.post("/publish/{stream:path}")
