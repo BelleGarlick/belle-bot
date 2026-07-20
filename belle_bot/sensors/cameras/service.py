@@ -49,20 +49,21 @@ if __name__ == "__main__":
                 frames = extra_frames
 
             aligned_frames = align.process(frames)
-            depth_raw = aligned_frames.get_depth_frame()
+            depth_frame = aligned_frames.get_depth_frame()
             color_frame = aligned_frames.get_color_frame()
 
             # Check if frames are valid
-            if not depth_raw or not color_frame:
+            if not depth_frame or not color_frame:
                 continue
 
             # Fill missing depth values
-            depth_raw = hole_filler.process(depth_raw)
+            depth_frame = hole_filler.process(depth_frame)
 
             # Convert depth frame to an 8-bit RGB colorized frame
-            colorized_depth_frame = colorizer.colorize(depth_raw)
+            colorized_depth_frame = colorizer.colorize(depth_frame)
 
             # Convert both to numpy arrays
+            depth_raw = np.asanyarray(depth_frame.get_data())
             depth_image_rgb = np.asanyarray(colorized_depth_frame.get_data())
             color_image = np.asanyarray(color_frame.get_data())
 
@@ -73,7 +74,7 @@ if __name__ == "__main__":
             # Compress both as standard 8-bit BGR images
             color_encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY]
             _, color_buffer = cv2.imencode('.jpg', color_bgr, color_encode_param)
-            
+
             depth_encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 30]
             _, depth_buffer = cv2.imencode('.jpg', depth_bgr, depth_encode_param)
 
