@@ -1,7 +1,6 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
-from pydantic import BaseModel
 
-from belle_bot.infra.fabric import logs, utils
+from belle_bot.infra.fabric import utils
 
 app = FastAPI()
 
@@ -35,7 +34,6 @@ async def publish(stream: str, message: Request):
 
     body = await message.body()
     body = body.decode("utf-8")
-    logs.log(stream, body)
 
     # Broadcast the message
     disconnected = []
