@@ -35,8 +35,7 @@ export function renderCameraImage(
         ctx.drawImage(image, offsetX, offsetY, drawWidth, drawHeight);
     };
 
-    // Fixed: Dynamically switch or default to image/png since you are cv2 encoding to .png
-    image.src = `data:image/png;base64,${data[selectedCamera]}`;
+    image.src = `data:image/jpg;base64,${data[selectedCamera]}`;
 }
 
 export function renderOdometryData(

@@ -28,7 +28,7 @@ def process_data(data):
 
 
 class FabricClient:
-    def __init__(self, host="belle-bot"):
+    def __init__(self, host="localhost"):
         self.host = host
         self.port = FABRIC_PORT
         self.__listeners = {}
@@ -38,8 +38,7 @@ class FabricClient:
             return
 
         def on_message(ws, message):
-            data = json.loads(message)
-            callback(data.get("data", {}))
+            callback(json.loads(message))
 
         def on_error(ws, error):
             print(f"WebSocket error for stream {stream}: {error}")
@@ -67,7 +66,7 @@ class FabricClient:
 
         url = f"http://{self.host}:{self.port}/publish/{stream}"
         try:
-            response = requests.post(url, json={"data": data})
+            response = requests.post(url, json=data)
             response.raise_for_status()
             return response.json()
         except Exception as e:

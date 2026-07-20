@@ -5,8 +5,9 @@ import time
 import uuid
 from pathlib import Path
 
-# Default directory for logs
-DEFAULT_LOG_DIR = "replays"
+
+CHUNK_TIME = 600  # 600s (10min)
+
 
 # In-memory cache for the current chunk
 _current_chunk_info = {
@@ -15,43 +16,32 @@ _current_chunk_info = {
 }
 
 
-def _get_chunk_path(timestamp: float = None):
-    # Check if logging is enabled
-    enabled = os.environ.get("SAVE_REPLAY_ENABLED", "false").lower() == "true"
-    if not enabled:
+def _get_chunk_path(timestamp: float) -> Path | None:
+    log_root_path = os.environ.get("LOG_PATH")
+    if not log_root_path:
         return None
-    
-    if timestamp is None:
-        timestamp = time.time()
-    
+
     global _current_chunk_info
-    
-    log_dir = Path(DEFAULT_LOG_DIR)
-    log_dir.mkdir(parents=True, exist_ok=True)
 
     # If we don't have a chunk or the current chunk has expired (10 mins)
     if (_current_chunk_info["path"] is None or 
-        timestamp - _current_chunk_info["start_time"] >= 600 or
-        _current_chunk_info["path"].parent.resolve() != log_dir.resolve()):
-        
-        # Try to find the most recent chunk in the directory to see if we can continue it
-        # (in case of process restart within the same 10-min window)
-        # However, the user asked for UUIDs, and typically chunks are sequential.
-        # To keep it simple and follow "each file use a uuidv4", we'll just create a new one
-        # if the in-memory one is missing or expired.
-        
+        timestamp - _current_chunk_info["start_time"] >= 600):
+
+        log_dir = Path(log_root_path)
+        log_dir.mkdir(parents=True, exist_ok=True)
+
         new_uuid = str(uuid.uuid4())
-        _current_chunk_info["start_time"] = (timestamp // 600) * 600
-        _current_chunk_info["path"] = log_dir / f"{new_uuid}.db"
+        _current_chunk_info["start_time"] = timestamp
+        _current_chunk_info["path"] = Path(log_dir / f"{new_uuid}.db")
     
     return _current_chunk_info["path"]
 
 
-def initialise(timestamp: float = None):
-    path = _get_chunk_path(timestamp)
-    if not path:
+def initialise(path: Path):
+    if path.exists():
         return
 
+    # Crete the table since it doesn't exist
     conn = sqlite3.connect(path)
     cursor = conn.cursor()
     cursor.execute("""
@@ -73,8 +63,7 @@ def log(service_name: str, data: dict[str, str]):
     if not path:
         return
 
-    # Ensure table exists for this chunk
-    initialise(now)
+    initialise(path)
 
     conn = sqlite3.connect(path)
     cursor = conn.cursor()

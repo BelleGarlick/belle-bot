@@ -72,8 +72,9 @@ if __name__ == "__main__":
             color_bgr = cv2.cvtColor(color_image, cv2.COLOR_RGB2BGR)
 
             # Compress both as standard 8-bit BGR images
-            _, depth_buffer = cv2.imencode('.png', depth_bgr)
-            _, color_buffer = cv2.imencode('.png', color_bgr)
+            encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY]
+            _, depth_buffer = cv2.imencode('.jpg', depth_bgr, encode_param)
+            _, color_buffer = cv2.imencode('.jpg', color_bgr, encode_param)
 
             depth_frame_string = base64.b64encode(depth_buffer).decode("utf-8")
             color_frame_string = base64.b64encode(color_buffer).decode("utf-8")

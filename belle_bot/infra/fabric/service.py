@@ -1,16 +1,13 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from pydantic import BaseModel
 
 from belle_bot.infra.fabric import logs, utils
 
 app = FastAPI()
 
-
 # In-memory storage for active websocket connections: stream_name -> list of WebSocket
 active_connections: dict[str, list[WebSocket]] = {}
 
-class Message(BaseModel):
-    data: dict[str, str]  # data is map of str -> base64 encoded bytes
 
 @app.websocket("/listen/{stream:path}")
 async def websocket_endpoint(websocket: WebSocket, stream: str):
@@ -29,17 +26,23 @@ async def websocket_endpoint(websocket: WebSocket, stream: str):
 
 
 @app.post("/publish/{stream:path}")
-async def publish(stream: str, message: Message):
-    disconnected = []
+async def publish(stream: str, message: Request):
+    targets = []
+    for key in active_connections:
+        key_prefix = key.split("*")[0]
+        if stream.startswith(key_prefix):
+            targets += active_connections[key]
 
-    # Log the data if it exists
-    logs.log(stream, message.data)
+    body = await message.body()
+    body = body.decode("utf-8")
 
     # Broadcast the message
-    for connection in active_connections.get(stream, []):
+    disconnected = []
+    for connection in targets:
         try:
-            await connection.send_json(message.model_dump())
-        except Exception:
+            await connection.send_text(body)
+        except Exception as e:
+            print(e)
             disconnected.append(connection)
 
     # Clean up stale connections
