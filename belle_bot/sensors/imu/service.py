@@ -10,7 +10,7 @@ from belle_bot.infra.fabric import FabricClient
 PORT = '/dev/ttyUSB1'
 BAUDRATE = 9600
 HZ_10_INTERVAL = 0.1  # 10hz rate
-FABRIC_SERVICE_ID = "sensors/imu"
+FABRIC_ID = "sensors/imu"
 CLIENT = FabricClient()
 
 
@@ -156,7 +156,7 @@ class IMUProcessor:
             avg_gyro = np.mean(gyros, axis=0) if gyros else np.array([0.0, 0.0, 0.0])
             angle = self.latest_angle
 
-            CLIENT.publish(FABRIC_SERVICE_ID, {
+            CLIENT.publish(FABRIC_ID, {
                 "service_name": FABRIC_ID,
                 "time": np.array(time.time()).astype(np.float32),
                 "acc": avg_acc.astype(np.float32),
