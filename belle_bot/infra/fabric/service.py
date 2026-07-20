@@ -36,17 +36,11 @@ async def publish(stream: str, message: Request):
     body = body.decode("utf-8")
 
     # Broadcast the message
-    disconnected = []
     for connection in targets:
         try:
             await connection.send_text(body)
         except Exception as e:
             print(e)
-            disconnected.append(connection)
-
-    # Clean up stale connections
-    for conn in disconnected:
-        active_connections[stream].remove(conn)
 
     return {"status": "published", "listener_count": len(active_connections.get(stream, []))}
 
