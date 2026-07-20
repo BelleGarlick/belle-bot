@@ -18,7 +18,7 @@ interface FabricContextI {
 const FabricContext = createContext<FabricContextI | null>(null);
 
 export function FabricContextProvider({ children }: PropsWithChildren) {
-    const [domain, setDomain] = useState<string | undefined>("belle-bot:59990");
+    const [domain, setDomain] = useState<string | undefined>("belle-bot:59991");
 
     const webSockets: { [key: string]: WebSocket } = {};
     const callbacks: { [key: string]: { [id: string]: StreamCallback } } = {};
@@ -27,32 +27,24 @@ export function FabricContextProvider({ children }: PropsWithChildren) {
         if (!domain) throw "No domain set.";
 
         if (!Object.hasOwn(webSockets, stream)) {
-            console.log("creating")
 
             const path = "ws://" + domain + "/listen/" + stream;
-            console.log(path)
             const socket = new WebSocket(path);
 
             socket.onmessage = (event: MessageEvent) => {
-                console.log(event);
-                const data = JSON.parse(event.data).data;
+                const data = JSON.parse(event.data);
                 Object.values(callbacks[stream]).forEach((x) => x(data));
             };
 
             socket.onerror = x => {
-                console.log("ahhh")
                 console.log(x)
             }
             socket.onopen = x => {
-                console.log("ahhh")
                 console.log(x)
             }
             socket.onclose = x => {
-                console.log("ahhh")
                 console.log(x)
             }
-
-            console.log("creating the socket")
 
             // todo handle socket events
             // todo handle errors if exists

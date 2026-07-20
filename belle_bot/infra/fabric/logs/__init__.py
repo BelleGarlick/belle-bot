@@ -17,7 +17,7 @@ _current_chunk_info = {
 
 
 def _get_chunk_path(timestamp: float) -> Path | None:
-    log_root_path = os.environ.get("LOG_PATH")
+    log_root_path = os.environ.get("REPLAYS_PATH")
     if not log_root_path:
         return None
 

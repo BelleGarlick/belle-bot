@@ -14,7 +14,7 @@ The IMU service connects to a serial port, parses incoming data packets, and agg
   - Angular Velocity (Wx, Wy, Wz)
   - Euler Angles (Roll, Pitch, Yaw)
 - **Data Aggregation**: Collects high-frequency raw data and publishes 10Hz averages to reduce noise and network load.
-- **Fabric Integration**: Publishes data to the `sensors/odometry` topic on the Belle Bot fabric.
+- **Fabric Integration**: Publishes data to the `sensors/imu` topic on the Belle Bot fabric.
 
 ## Requirements
 
