@@ -1,3 +1,4 @@
+from belle_bot.infra.fabric import FabricClient
 import json
 import os
 import sqlite3
@@ -5,9 +6,7 @@ import time
 import uuid
 from pathlib import Path
 
-
 CHUNK_TIME = 600  # 600s (10min)
-
 
 # In-memory cache for the current chunk
 _current_chunk_info = {
@@ -17,23 +16,22 @@ _current_chunk_info = {
 
 
 def _get_chunk_path(timestamp: float) -> Path | None:
-    log_root_path = os.environ.get("REPLAYS_PATH")
+    log_root_path = os.environ.get("REPLAYS_PATH", "replays")
     if not log_root_path:
         return None
 
     global _current_chunk_info
 
     # If we don't have a chunk or the current chunk has expired (10 mins)
-    if (_current_chunk_info["path"] is None or 
-        timestamp - _current_chunk_info["start_time"] >= 600):
-
+    if (_current_chunk_info["path"] is None or
+            timestamp - _current_chunk_info["start_time"] >= 600):
         log_dir = Path(log_root_path)
         log_dir.mkdir(parents=True, exist_ok=True)
 
         new_uuid = str(uuid.uuid4())
         _current_chunk_info["start_time"] = timestamp
         _current_chunk_info["path"] = Path(log_dir / f"{new_uuid}.db")
-    
+
     return _current_chunk_info["path"]
 
 
@@ -45,12 +43,13 @@ def initialise(path: Path):
     conn = sqlite3.connect(path)
     cursor = conn.cursor()
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS service_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            service_name TEXT NOT NULL,
-            timestamp TEXT NOT NULL,
-            value BLOB NOT NULL
-        )
+           CREATE TABLE IF NOT EXISTS service_logs
+           (
+               id INTEGER PRIMARY KEY AUTOINCREMENT,
+               service_name TEXT NOT NULL,
+               timestamp TEXT NOT NULL,
+               value BLOB NOT NULL
+           )
     """)
     conn.commit()
     conn.close()
@@ -76,3 +75,16 @@ def log(service_name: str, data: str):
     conn.commit()
     conn.close()
 
+
+CLIENT = FabricClient()
+
+
+def capture(x):
+    log(x.get("service_name", "missing_service_name"), x)
+
+
+if __name__ == "__main__":
+    CLIENT.listen("*", capture)
+
+    while True:
+        pass

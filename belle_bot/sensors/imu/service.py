@@ -157,6 +157,7 @@ class IMUProcessor:
             angle = self.latest_angle
 
             CLIENT.publish(FABRIC_SERVICE_ID, {
+                "service_name": FABRIC_ID,
                 "time": np.array(time.time()).astype(np.float32),
                 "acc": avg_acc.astype(np.float32),
                 "gyro": avg_gyro.astype(np.float32),

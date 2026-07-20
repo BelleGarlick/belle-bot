@@ -35,6 +35,7 @@ async def stream_audio():
             audio_payload = base64.b64encode(to_send).decode('utf-8')
 
             coro = CLIENT.publish_async(FABRIC_ID, {
+                "service_name": FABRIC_ID,
                 "audio_id": str(uuid.uuid4()),
                 "audio": audio_payload,
                 "sample_rate": str(SAMPLE_RATE),

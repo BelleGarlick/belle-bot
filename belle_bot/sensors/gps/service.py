@@ -33,6 +33,7 @@ class GPSProcessor:
                     has_fix = msg.gps_qual > 0
 
                     payload = {
+                        "service_name": FABRIC_ID,
                         "latitude": float(msg.latitude) if has_fix else 0.0,
                         "longitude": float(msg.longitude) if has_fix else 0.0,
                         "altitude": float(msg.altitude) if (has_fix and msg.altitude) else 0.0,

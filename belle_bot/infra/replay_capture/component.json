@@ -1,0 +1,6 @@
+{
+  "name": "infra/replay_capture",
+  "version": "1.0",
+  "runtime": "python",
+  "entry": "service.py"
+}

@@ -67,6 +67,7 @@ if __name__ == "__main__":
 
             # Convert both to numpy arrays
             depth_raw = np.asanyarray(depth_frame.get_data())
+            depth_raw = cv2.resize(depth_raw, tuple([x//2 for x in depth_raw.shape]))
             depth_image_rgb = np.asanyarray(colorized_depth_frame.get_data())
             color_image = np.asanyarray(color_frame.get_data())
 
@@ -81,7 +82,8 @@ if __name__ == "__main__":
             depth_encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), DEPTH_JPEG_QUALITY]
             _, depth_buffer = cv2.imencode('.jpg', depth_bgr, depth_encode_param)
 
-            CLIENT.publish(FABRIC_ID, {
+            CLIENT.publish_async(FABRIC_ID, {
+                "service_name": FABRIC_ID,
                 "frame_id": str(uuid.uuid4()),
                 "rgb": color_buffer,
                 "depth_raw": depth_raw,
