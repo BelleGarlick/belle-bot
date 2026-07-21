@@ -1,11 +1,11 @@
 import asyncio
 import json
+import threading
 from collections import deque
 
 from belle_bot.infra.fabric import FabricClient
 import os
 import queue
-import threading
 import time
 import uuid
 from pathlib import Path
@@ -106,14 +106,13 @@ def capture(x):
 CLIENT = FabricClient()
 
 if __name__ == "__main__":
-    # # Start background thread for writing to DB
-    # threading.Thread(target=_sqlite_writer_worker, daemon=True).start()
-    #
-    # # Start background thread for cleaning up old files
-    # threading.Thread(target=cleanup_worker, daemon=True).start()
+    # Start background thread for writing to DB
+    threading.Thread(target=_sqlite_writer_worker, daemon=True).start()
+
+    # Start background thread for cleaning up old files
+    threading.Thread(target=cleanup_worker, daemon=True).start()
 
     # Listen to WebSocket on main thread
-    # CLIENT.listen("*", capture)
     asyncio.run(CLIENT.listen_async("*", capture))
 
     try:
