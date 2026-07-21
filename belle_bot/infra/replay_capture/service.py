@@ -88,7 +88,7 @@ if __name__ == "__main__":
     CLIENT.listen("*", capture)
 
     while True:
-        if LOG_ROOT_PATH is not None:
+        if LOG_ROOT_PATH is not None and os.path.exists(LOG_ROOT_PATH):
             files = os.listdir(LOG_ROOT_PATH)
             for file in files:
                 date_age = os.path.getmtime(os.path.join(LOG_ROOT_PATH, file))

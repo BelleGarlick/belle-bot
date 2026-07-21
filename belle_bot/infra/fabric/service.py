@@ -22,7 +22,7 @@ async def websocket_endpoint(websocket: WebSocket, stream: str):
         while True:
             # Send a heartbeat ping every 20 seconds to prevent timeouts
             await websocket.send_json({"type": "ping"})
-            await asyncio.sleep(20)
+            await asyncio.sleep(10)
 
     except WebSocketDisconnect:
         print(f"Client disconnected from stream: {stream}")
@@ -57,4 +57,4 @@ async def publish(stream: str, message: Request):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=utils.FABRIC_PORT)
+    uvicorn.run(app, host="0.0.0.0", port=utils.FABRIC_PORT, log_level="critical")
