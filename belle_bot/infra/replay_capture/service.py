@@ -87,7 +87,7 @@ def capture(x):
 
     rate.append(now)
     fps = 1 / ((rate[-1] - rate[0]) / len(rate))
-    print("FPS: ", fps)
+    print("\rCPS: ", fps, end="")
 
     try:
         log_queue.put_nowait((service_name, x, now))
