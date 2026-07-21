@@ -1,6 +1,7 @@
 import base64
 import json
 import threading
+import traceback
 
 import httpx
 import numpy as np
@@ -41,6 +42,7 @@ class FabricClient:
             callback(json.loads(message))
 
         def on_error(ws, error):
+            traceback.print_exception(error)
             print(f"WebSocket error for stream {stream}: {error}")
 
         def on_close(ws, close_status_code, close_msg):
@@ -80,7 +82,7 @@ class FabricClient:
         url = f"http://{self.host}:{self.port}/publish/{service_name}"
         async with httpx.AsyncClient() as client:
             try:
-                response = await client.post(url, json={"data": data})
+                response = await client.post(url, json=data)
                 response.raise_for_status()
             except Exception as e:
                 print(e)

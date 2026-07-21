@@ -14,10 +14,11 @@ _current_chunk_info = {
     "path": None
 }
 
+LOG_ROOT_PATH = os.environ.get("REPLAYS_PATH", "replays")
+
 
 def _get_chunk_path(timestamp: float) -> Path | None:
-    log_root_path = os.environ.get("REPLAYS_PATH", "replays")
-    if not log_root_path:
+    if not LOG_ROOT_PATH:
         return None
 
     global _current_chunk_info
@@ -25,7 +26,7 @@ def _get_chunk_path(timestamp: float) -> Path | None:
     # If we don't have a chunk or the current chunk has expired (10 mins)
     if (_current_chunk_info["path"] is None or
             timestamp - _current_chunk_info["start_time"] >= 600):
-        log_dir = Path(log_root_path)
+        log_dir = Path(LOG_ROOT_PATH)
         log_dir.mkdir(parents=True, exist_ok=True)
 
         new_uuid = str(uuid.uuid4())
@@ -87,4 +88,12 @@ if __name__ == "__main__":
     CLIENT.listen("*", capture)
 
     while True:
-        pass
+        if LOG_ROOT_PATH is not None:
+            files = os.listdir(LOG_ROOT_PATH)
+            for file in files:
+                date_age = os.path.getmtime(os.path.join(LOG_ROOT_PATH, file))
+                if date_age < time.time() - 3600 * 12:
+                    print(f"Deleting {file}")
+                    os.remove(os.path.join(LOG_ROOT_PATH, file))
+
+        time.sleep(10)
