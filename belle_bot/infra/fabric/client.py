@@ -60,10 +60,7 @@ class FabricClient:
 
                     self.__listeners[stream] = ws
 
-                    ws.run_forever(
-                        ping_interval=20,
-                        ping_timeout=None,
-                    )
+                    ws.run_forever()
 
                 except Exception:
                     traceback.print_exc()

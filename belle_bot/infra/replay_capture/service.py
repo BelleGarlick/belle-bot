@@ -1,9 +1,9 @@
 import json
+from collections import deque
 
 from belle_bot.infra.fabric import FabricClient
 import os
 import queue
-import sqlite3
 import threading
 import time
 import uuid
@@ -22,16 +22,6 @@ _current_chunk_info = {
 log_queue = queue.Queue(maxsize=250)
 
 
-def get_page_non_blocking(page_size=20):
-    page = []
-
-    for _ in range(page_size):
-        item = log_queue.get(block=True)
-        page.append(item)
-
-    return page
-
-
 def _get_chunk_path(timestamp: float) -> Path | None:
     if not LOG_ROOT_PATH:
         return None
@@ -46,60 +36,21 @@ def _get_chunk_path(timestamp: float) -> Path | None:
         new_uuid = str(uuid.uuid4())
         print(f"Starting replay log: {new_uuid}")
         _current_chunk_info["start_time"] = timestamp
-        _current_chunk_info["path"] = log_dir / f"{new_uuid}.db"
+        _current_chunk_info["path"] = log_dir / f"{new_uuid}.txt"
 
     return _current_chunk_info["path"]
 
 
-def initialise(path: Path):
-    if path.exists():
-        return
-
-    with sqlite3.connect(path) as conn:
-        conn.execute("""
-                     CREATE TABLE IF NOT EXISTS service_logs
-                     (
-                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                         service_name TEXT NOT NULL,
-                         timestamp TEXT NOT NULL,
-                         value BLOB NOT NULL
-                     )
-                     """)
-
-
 def _sqlite_writer_worker():
     """Background worker that continuously drains the log queue into SQLite."""
-    db_connections = {}
-
     while True:
         try:
-            items = get_page_non_blocking()
-            path = _get_chunk_path(items[0][-1])
+            service_name, data, timestamp = log_queue.get(block=True)
+            path = _get_chunk_path(timestamp)
 
             if path:
-                initialise(path)
-
-                # Reuse open connections per file path to avoid connection churn
-                if path not in db_connections:
-                    db_connections[path] = sqlite3.connect(path)
-
-                # Create sql string and values
-                values_string = ",".join(["(?, ?, ?)" for _ in items])
-                value_items = []
-                for service_name, data, timestamp in items:
-                    value_items += [service_name, json.dumps(data), str(timestamp)]
-
-                # Create sql string
-                conn = db_connections[path]
-                conn.execute(
-                    f"""
-                        INSERT INTO service_logs 
-                            (service_name, value, timestamp) 
-                        VALUES {values_string}
-                    """,
-                    value_items
-                )
-                conn.commit()
+                with open(path, "a+") as f:
+                    f.write(",".join([service_name, str(timestamp), json.dumps(data)]) + "\n")
 
         except Exception as e:
             print(f"Error in logging worker: {e}")
@@ -124,6 +75,7 @@ def cleanup_worker():
 
         time.sleep(60)
 
+rate = deque(maxlen=100)
 
 def capture(x):
     """
@@ -132,6 +84,10 @@ def capture(x):
     """
     now = time.time()
     service_name = x.get("service_name", "missing_service_name")
+
+    rate.append(now)
+    fps = 1 / ((rate[-1] - rate[0]) / len(rate))
+    print("FPS: ", fps)
 
     try:
         log_queue.put_nowait((service_name, x, now))
