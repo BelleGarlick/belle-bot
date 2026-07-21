@@ -50,6 +50,7 @@ class FabricClient:
 
         def run_ws():
             ws_url = f"ws://{self.host}:{self.port}/listen/{stream}"
+            websocket.enableTrace(True)
             ws = websocket.WebSocketApp(
                 ws_url,
                 on_message=on_message,
