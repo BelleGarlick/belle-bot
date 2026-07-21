@@ -44,14 +44,12 @@ class FabricClient:
 
         def on_error(ws, error):
             print(f"WebSocket error: {error!r}")
-            traceback.print_exc()
 
         def on_close(ws, close_status_code, close_msg):
             print(f"WebSocket closed for stream {stream}")
 
         def run_ws():
             ws_url = f"ws://{self.host}:{self.port}/listen/{stream}"
-            websocket.enableTrace(True)
             while True:
                 try:
                     ws = websocket.WebSocketApp(
@@ -71,8 +69,8 @@ class FabricClient:
                 except Exception:
                     traceback.print_exc()
 
-                print(f"Reconnecting {stream} in 2 seconds...")
-                time.sleep(2)
+                print(f"Stream ended reconnecting to {stream}")
+
 
         wst = threading.Thread(target=run_ws)
         wst.daemon = True

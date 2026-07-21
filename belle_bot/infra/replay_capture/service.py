@@ -33,6 +33,7 @@ def _get_chunk_path(timestamp: float) -> Path | None:
         log_dir.mkdir(parents=True, exist_ok=True)
 
         new_uuid = str(uuid.uuid4())
+        print(f"Starting replay log: {uuid}")
         _current_chunk_info["start_time"] = timestamp
         _current_chunk_info["path"] = log_dir / f"{new_uuid}.db"
 
@@ -87,17 +88,17 @@ def _sqlite_writer_worker():
 def cleanup_worker():
     """Background thread to handle 12-hour file cleanup periodically."""
     while True:
-        try:
-            if LOG_ROOT_PATH is not None and os.path.exists(LOG_ROOT_PATH):
-                files = os.listdir(LOG_ROOT_PATH)
-                now = time.time()
-                for file in files:
+        if LOG_ROOT_PATH is not None and os.path.exists(LOG_ROOT_PATH):
+            files = os.listdir(LOG_ROOT_PATH)
+            now = time.time()
+            for file in files:
+                try:
                     file_path = os.path.join(LOG_ROOT_PATH, file)
                     if os.path.getmtime(file_path) < now - 3600 * 12:
                         print(f"Deleting old replay log: {file}")
                         os.remove(file_path)
-        except Exception as e:
-            print(f"Error during file cleanup: {e}")
+                except Exception:
+                    pass
 
         time.sleep(60)
 
