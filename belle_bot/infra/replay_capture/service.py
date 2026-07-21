@@ -91,8 +91,8 @@ def capture(x):
     now = time.time()
     service_name = x.get("service_name", "missing_service_name")
 
+    rate.append(now)
     if (frame_count + 1) % 4 == 0:
-        rate.append(now)
         fps = 1 / ((rate[-1] - rate[0]) / len(rate))
         print("\rCPS: ", fps, end="", flush=True)
 
