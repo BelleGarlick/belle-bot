@@ -1,3 +1,5 @@
+import json
+
 from belle_bot.infra.fabric import FabricClient
 import os
 import queue
@@ -85,14 +87,14 @@ def _sqlite_writer_worker():
                 values_string = ",".join(["(?, ?, ?)" for _ in items])
                 value_items = []
                 for service_name, data, timestamp in items:
-                    value_items += [service_name, data, timestamp]
+                    value_items += [service_name, json.dumps(data), str(timestamp)]
 
                 # Create sql string
                 conn = db_connections[path]
                 conn.execute(
                     f"""
                         INSERT INTO service_logs 
-                            (service_name, timestamp, value) 
+                            (service_name, value, timestamp) 
                         VALUES {values_string}
                     """,
                     value_items
