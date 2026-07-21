@@ -1,7 +1,6 @@
 import base64
 import json
 import threading
-import time
 import traceback
 
 import httpx
@@ -98,5 +97,4 @@ class FabricClient:
                 response = await client.post(url, json=data)
                 response.raise_for_status()
             except Exception as e:
-                print(e)
                 print(f"Failed to publish to {service_name}: {e}")

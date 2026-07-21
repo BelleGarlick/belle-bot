@@ -18,7 +18,17 @@ _current_chunk_info = {
 }
 
 # Queue to offload SQLite writes away from the WebSocket thread
-log_queue = queue.Queue(maxsize=200)
+log_queue = queue.Queue(maxsize=250)
+
+
+def get_page_non_blocking(page_size=20):
+    page = []
+
+    for _ in range(page_size):
+        item = log_queue.get(block=True)
+        page.append(item)
+
+    return page
 
 
 def _get_chunk_path(timestamp: float) -> Path | None:
@@ -33,7 +43,7 @@ def _get_chunk_path(timestamp: float) -> Path | None:
         log_dir.mkdir(parents=True, exist_ok=True)
 
         new_uuid = str(uuid.uuid4())
-        print(f"Starting replay log: {uuid}")
+        print(f"Starting replay log: {new_uuid}")
         _current_chunk_info["start_time"] = timestamp
         _current_chunk_info["path"] = log_dir / f"{new_uuid}.db"
 
@@ -62,8 +72,8 @@ def _sqlite_writer_worker():
 
     while True:
         try:
-            service_name, data, now = log_queue.get()
-            path = _get_chunk_path(now)
+            items = get_page_non_blocking()
+            path = _get_chunk_path(items[0][-1])
 
             if path:
                 initialise(path)
@@ -72,10 +82,21 @@ def _sqlite_writer_worker():
                 if path not in db_connections:
                     db_connections[path] = sqlite3.connect(path)
 
+                # Create sql string and values
+                values_string = ",".join(["(?, ?, ?)" for _ in items])
+                value_items = []
+                for service_name, data, timestamp in items:
+                    value_items.append((service_name, data, timestamp))
+
+                # Create sql string
                 conn = db_connections[path]
                 conn.execute(
-                    "INSERT INTO service_logs (service_name, timestamp, value) VALUES (?, ?, ?)",
-                    (service_name, str(now), json.dumps(data))
+                    f"""
+                        INSERT INTO service_logs 
+                            (service_name, timestamp, value) 
+                        VALUES {values_string}
+                    """,
+                    value_items
                 )
                 conn.commit()
 
@@ -113,6 +134,7 @@ def capture(x):
 
     try:
         log_queue.put_nowait((service_name, x, now))
+        print(log_queue.qsize())
     except queue.Full:
         # Drop frame if storage can't keep up, keeping WebSocket loop alive
         pass
