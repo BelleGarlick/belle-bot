@@ -1,3 +1,4 @@
+import asyncio
 import json
 from collections import deque
 
@@ -75,19 +76,25 @@ def cleanup_worker():
 
         time.sleep(60)
 
-rate = deque(maxlen=100)
+rate = deque(maxlen=200)
+frame_count = 0
 
 def capture(x):
     """
     WebSocket callback: EXTREMELY FAST (<0.01ms).
     Directly puts data into memory queue without waiting for disk I/O.
     """
+    global frame_count
+
+    frame_count += 1
+
     now = time.time()
     service_name = x.get("service_name", "missing_service_name")
 
-    rate.append(now)
-    fps = 1 / ((rate[-1] - rate[0]) / len(rate))
-    print("\rCPS: ", fps, end="")
+    if frame_count % 4 == 0:
+        rate.append(now)
+        fps = 1 / ((rate[-1] - rate[0]) / len(rate))
+        print("\rCPS: ", fps, end="", flush=True)
 
     try:
         log_queue.put_nowait((service_name, x, now))
@@ -99,14 +106,18 @@ def capture(x):
 CLIENT = FabricClient()
 
 if __name__ == "__main__":
-    # Start background thread for writing to DB
-    threading.Thread(target=_sqlite_writer_worker, daemon=True).start()
-
-    # Start background thread for cleaning up old files
-    threading.Thread(target=cleanup_worker, daemon=True).start()
+    # # Start background thread for writing to DB
+    # threading.Thread(target=_sqlite_writer_worker, daemon=True).start()
+    #
+    # # Start background thread for cleaning up old files
+    # threading.Thread(target=cleanup_worker, daemon=True).start()
 
     # Listen to WebSocket on main thread
-    CLIENT.listen("*", capture)
+    # CLIENT.listen("*", capture)
+    asyncio.run(CLIENT.listen_async("*", capture))
 
-    while True:
-        pass
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\nStopping...")

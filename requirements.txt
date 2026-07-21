@@ -13,3 +13,4 @@ pynmea2
 opencv-python
 pyserial-asyncio
 psutil
+orjson

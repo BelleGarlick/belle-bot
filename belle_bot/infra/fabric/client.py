@@ -1,5 +1,8 @@
+import asyncio
 import base64
-import json
+import socket
+
+import orjson  # faster than json
 import threading
 import traceback
 
@@ -7,6 +10,8 @@ import httpx
 import numpy as np
 import websocket
 import requests
+import websockets
+
 from .utils import FABRIC_PORT
 
 
@@ -34,12 +39,27 @@ class FabricClient:
         self.port = FABRIC_PORT
         self.__listeners = {}
 
+    async def listen_async(self, stream: str, callback):
+        ws_url = f"ws://{self.host}:{self.port}/listen/{stream}"
+
+        # open connection with disabled ping timeouts and no delay
+        async for ws in websockets.connect(ws_url, ping_interval=None):
+            try:
+                async for message in ws:
+                    callback(orjson.loads(message))
+            except websockets.ConnectionClosed:
+                # reconnect
+                await asyncio.sleep(0.1)
+
     def listen(self, stream: str, callback):
         if stream in self.__listeners:
             return
 
+        def on_open(ws):
+            ws.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+
         def on_message(ws, message):
-            callback(json.loads(message))
+            callback(orjson.loads(message))
 
         def on_error(ws, error):
             print(f"WebSocket error: {error!r}")
@@ -54,13 +74,14 @@ class FabricClient:
                     ws = websocket.WebSocketApp(
                         ws_url,
                         on_message=on_message,
+                        on_open=on_open,
                         on_error=on_error,
                         on_close=on_close,
                     )
 
                     self.__listeners[stream] = ws
 
-                    ws.run_forever()
+                    ws.run_forever(skip_utf8_validation=True)
 
                 except Exception:
                     traceback.print_exc()
