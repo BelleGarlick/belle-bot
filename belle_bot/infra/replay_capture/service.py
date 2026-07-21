@@ -1,5 +1,4 @@
 from belle_bot.infra.fabric import FabricClient
-import json
 import os
 import queue
 import sqlite3
@@ -86,7 +85,7 @@ def _sqlite_writer_worker():
                 values_string = ",".join(["(?, ?, ?)" for _ in items])
                 value_items = []
                 for service_name, data, timestamp in items:
-                    value_items.append((service_name, data, timestamp))
+                    value_items += [service_name, data, timestamp]
 
                 # Create sql string
                 conn = db_connections[path]
@@ -134,7 +133,6 @@ def capture(x):
 
     try:
         log_queue.put_nowait((service_name, x, now))
-        print(log_queue.qsize())
     except queue.Full:
         # Drop frame if storage can't keep up, keeping WebSocket loop alive
         pass
