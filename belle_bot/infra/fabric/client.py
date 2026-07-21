@@ -57,7 +57,7 @@ class FabricClient:
                 on_close=on_close
             )
             self.__listeners[stream] = ws
-            ws.run_forever()
+            ws.run_forever(ping_interval=20, ping_timeout=10)
 
         wst = threading.Thread(target=run_ws)
         wst.daemon = True
