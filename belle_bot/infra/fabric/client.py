@@ -1,6 +1,7 @@
 import base64
 import json
 import threading
+import time
 import traceback
 
 import httpx
@@ -42,8 +43,8 @@ class FabricClient:
             callback(json.loads(message))
 
         def on_error(ws, error):
-            traceback.print_exception(error)
-            print(f"WebSocket error for stream {stream}: {error}")
+            print(f"WebSocket error: {error!r}")
+            traceback.print_exc()
 
         def on_close(ws, close_status_code, close_msg):
             print(f"WebSocket closed for stream {stream}")
@@ -51,14 +52,27 @@ class FabricClient:
         def run_ws():
             ws_url = f"ws://{self.host}:{self.port}/listen/{stream}"
             websocket.enableTrace(True)
-            ws = websocket.WebSocketApp(
-                ws_url,
-                on_message=on_message,
-                on_error=on_error,
-                on_close=on_close
-            )
-            self.__listeners[stream] = ws
-            ws.run_forever(ping_interval=20, ping_timeout=None)
+            while True:
+                try:
+                    ws = websocket.WebSocketApp(
+                        ws_url,
+                        on_message=on_message,
+                        on_error=on_error,
+                        on_close=on_close,
+                    )
+
+                    self.__listeners[stream] = ws
+
+                    ws.run_forever(
+                        ping_interval=20,
+                        ping_timeout=None,
+                    )
+
+                except Exception:
+                    traceback.print_exc()
+
+                print(f"Reconnecting {stream} in 2 seconds...")
+                time.sleep(2)
 
         wst = threading.Thread(target=run_ws)
         wst.daemon = True

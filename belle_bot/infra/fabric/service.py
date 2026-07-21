@@ -1,4 +1,4 @@
-import asyncio
+import traceback
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 
@@ -18,14 +18,13 @@ async def websocket_endpoint(websocket: WebSocket, stream: str):
     active_connections[stream].append(websocket)
 
     try:
-        # Keep the connection alive indefinitely without expecting client messages
         while True:
-            # Send a heartbeat ping every 20 seconds to prevent timeouts
-            await websocket.send_json({"type": "ping"})
-            await asyncio.sleep(10)
+            await websocket.receive()
 
     except WebSocketDisconnect:
         print(f"Client disconnected from stream: {stream}")
+    except Exception:
+        traceback.print_exc()
     finally:
         # Cleanup guarantees this runs even if an unexpected error occurs
         if websocket in active_connections.get(stream, []):
@@ -37,24 +36,31 @@ async def websocket_endpoint(websocket: WebSocket, stream: str):
 @app.post("/publish/{stream:path}")
 async def publish(stream: str, message: Request):
     targets = []
-    for key in active_connections:
+    for key, conns in list(active_connections.items()):
         key_prefix = key.split("*")[0]
         if stream.startswith(key_prefix):
-            targets += active_connections[key]
+            targets += conns
 
     body = await message.body()
     body = body.decode("utf-8")
 
-    # Broadcast the message
+    dead = []
     for connection in targets:
         try:
             await connection.send_text(body)
-        except Exception as e:
-            print(e)
+        except Exception:
+            dead.append(connection)
+
+    for connection in dead:
+        for stream_name, conns in list(active_connections.items()):
+            if connection in conns:
+                conns.remove(connection)
+                if not conns:
+                    del active_connections[stream_name]
 
     return {"status": "published", "listener_count": len(active_connections.get(stream, []))}
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=utils.FABRIC_PORT, log_level="critical")
+    uvicorn.run(app, host="0.0.0.0", port=utils.FABRIC_PORT, log_level="info")

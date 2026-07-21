@@ -18,7 +18,7 @@ interface FabricContextI {
 const FabricContext = createContext<FabricContextI | null>(null);
 
 export function FabricContextProvider({ children }: PropsWithChildren) {
-    const [domain, setDomain] = useState<string | undefined>("belle-bot:59991");
+    const [domain, setDomain] = useState<string | undefined>("192.168.0.185:59991");
 
     const webSockets: { [key: string]: WebSocket } = {};
     const callbacks: { [key: string]: { [id: string]: StreamCallback } } = {};
