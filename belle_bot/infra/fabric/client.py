@@ -1,14 +1,8 @@
 import asyncio
 import base64
-import socket
-
 import orjson  # faster than json
-import threading
-import traceback
-
 import httpx
 import numpy as np
-import websocket
 import requests
 import websockets
 

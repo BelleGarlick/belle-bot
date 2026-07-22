@@ -23,15 +23,30 @@ if __name__ == "__main__":
 
     align_to = rs.stream.color
     align = rs.align(align_to)
-
-    # Set queue size to 2 on all sensors to minimize latency/lag
+    # 2. Hardware Settings & Presets
     device = profile.get_device()
+    depth_sensor = device.first_depth_sensor()
+
+    # Load high accuracy visual preset (0 = Custom, 1 = Default, 2 = Hand, 3 = High Accuracy, 4 = High Density)
+    if depth_sensor.supports(rs.option.visual_preset):
+        depth_sensor.set_option(rs.option.visual_preset, 3)  # High Accuracy
+
+    # Enable Laser Emitter for better stereo matching on plain surfaces
+    if depth_sensor.supports(rs.option.emitter_enabled):
+        depth_sensor.set_option(rs.option.emitter_enabled, 1)
+
     for sensor in device.query_sensors():
         if sensor.supports(rs.option.frames_queue_size):
             sensor.set_option(rs.option.frames_queue_size, 2)
 
-    # Initialize hole filling filter (Nearest neighbor mode)
-    hole_filler = rs.hole_filling_filter(1)
+    # 3. Instantiate Post-Processing Filters in Recommended Order
+    decimation = rs.decimation_filter(magnitude=1)  # Set to 2 if you want 2x hardware downscaling
+    threshold = rs.threshold_filter(min_dist=0.15, max_dist=4.0)  # Adjust min/max meters for your scene
+    depth_to_disparity = rs.disparity_transform(True)
+    spatial = rs.spatial_filter(smooth_alpha=0.5, smooth_delta=20, magnitude=2, hole_fill=0)
+    temporal = rs.temporal_filter(smooth_alpha=0.4, smooth_delta=20, persistence_control=3)
+    disparity_to_depth = rs.disparity_transform(False)
+    hole_filler = rs.hole_filling_filter(mode=1)  # 1 = farest_from_around, 2 = nearest_from_around
 
     # Initialize the colorizer tool to convert 16-bit depth to 8-bit RGB
     colorizer = rs.colorizer()
@@ -59,14 +74,19 @@ if __name__ == "__main__":
             if not depth_frame or not color_frame:
                 continue
 
-            # Fill missing depth values
-            depth_frame = hole_filler.process(depth_frame)
+            filtered_depth = decimation.process(depth_frame)
+            filtered_depth = threshold.process(filtered_depth)
+            filtered_depth = depth_to_disparity.process(filtered_depth)
+            filtered_depth = spatial.process(filtered_depth)
+            filtered_depth = temporal.process(filtered_depth)
+            filtered_depth = disparity_to_depth.process(filtered_depth)
+            filtered_depth = hole_filler.process(filtered_depth)
 
             # Convert depth frame to an 8-bit RGB colorized frame
-            colorized_depth_frame = colorizer.colorize(depth_frame)
+            colorized_depth_frame = colorizer.colorize(filtered_depth)
 
             # Convert both to numpy arrays
-            depth_raw = np.asanyarray(depth_frame.get_data())
+            depth_raw = np.asanyarray(filtered_depth.get_data())
             depth_raw = cv2.resize(depth_raw, tuple([x//2 for x in depth_raw.shape]))
             depth_image_rgb = np.asanyarray(colorized_depth_frame.get_data())
             color_image = np.asanyarray(color_frame.get_data())
