@@ -7,12 +7,19 @@ const LOGO_WIDTH = 120;
 
 export enum Page {
     REPLAYS = 0,
-    DATASETS = 1,
-    MODELS = 2,
+    MODELS = 1,
+    DATASETS = 2,
     ROBOVIZ = 3,
 }
 
-const NavBarLink = styled.div`
+const pages: { page: Page; text: string }[] = [
+    { page: Page.REPLAYS, text: "replays" },
+    { page: Page.MODELS, text: "models" },
+    { page: Page.DATASETS, text: "datasets" },
+    { page: Page.ROBOVIZ, text: "roboviz" },
+];
+
+const NavBarLink = styled.div<{ theme?: string }>`
     width: ${LINK_WIDTH}px;
     height: ${HEIGHT}px;
     display: flex;
@@ -21,6 +28,7 @@ const NavBarLink = styled.div`
     font-weight: bold;
     user-select: none;
     cursor: pointer;
+    color: ${({ theme }) => theme};
 `;
 
 const Logo = styled.div`
@@ -32,7 +40,6 @@ const Logo = styled.div`
     color: ${THEME};
     font-weight: bold;
     user-select: none;
-    text-shadow: 0px 0px 20px white;
 `;
 
 export function NavBar({
@@ -55,19 +62,14 @@ export function NavBar({
         >
             <Logo>belle-bot</Logo>
 
-            <NavBarLink onClick={() => setPage(Page.REPLAYS)}>
-                replays
-            </NavBarLink>
-
-            <NavBarLink onClick={() => setPage(Page.MODELS)}>models</NavBarLink>
-
-            <NavBarLink onClick={() => setPage(Page.DATASETS)}>
-                datasets
-            </NavBarLink>
-
-            <NavBarLink onClick={() => setPage(Page.ROBOVIZ)}>
-                roboviz
-            </NavBarLink>
+            {pages.map((x) => (
+                <NavBarLink
+                    theme={page === x.page ? THEME : undefined}
+                    onClick={() => setPage(x.page)}
+                >
+                    {x.text}
+                </NavBarLink>
+            ))}
 
             <div
                 style={{

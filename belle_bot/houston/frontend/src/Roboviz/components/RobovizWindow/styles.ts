@@ -1,8 +1,8 @@
-import styled from '@emotion/styled'
-import { THEME } from '../../Roboviz/utils.tsx'
+import styled from "@emotion/styled";
+import { THEME } from "../../utils.tsx";
 
-export const TOPBAR_HEIGHT = 36
-export const BOTTOM_BAR_HEIGHT = 40
+export const TOPBAR_HEIGHT = 36;
+export const BOTTOM_BAR_HEIGHT = 40;
 
 export const WindowContainer = styled.div`
     position: absolute;
@@ -14,7 +14,7 @@ export const WindowContainer = styled.div`
     box-shadow: 0px 0px 20px -10px black;
     user-select: none;
     box-sizing: border-box;
-`
+`;
 
 export const WindowTopBar = styled.div`
     text-align: left;
@@ -31,7 +31,7 @@ export const WindowTopBar = styled.div`
     flex-direction: row;
     gap: 16px;
     align-items: center;
-`
+`;
 
 export const WindowBottomBar = styled.div`
     text-align: left;
@@ -47,7 +47,7 @@ export const WindowBottomBar = styled.div`
     flex-direction: row;
     gap: 8px;
     align-items: center;
-`
+`;
 
 export const BottomBarSwitcher = styled.div`
     display: flex;
@@ -56,7 +56,7 @@ export const BottomBarSwitcher = styled.div`
     overflow: hidden;
     cursor: pointer;
     height: 26px;
-`
+`;
 
 export const ResizeCorner = styled.div`
     position: absolute;
@@ -67,7 +67,7 @@ export const ResizeCorner = styled.div`
     cursor: nwse-resize;
     background-color: ${THEME};
     clip-path: polygon(100% 0, 100% 100%, 0 100%);
-`
+`;
 
 export const DebugTextContainer = styled.div`
     position: absolute;
@@ -75,7 +75,7 @@ export const DebugTextContainer = styled.div`
     display: flex;
     flex-direction: column;
     gap: 4px;
-`
+`;
 
 export const DebugText = styled.div`
     background-color: #222;
@@ -85,4 +85,4 @@ export const DebugText = styled.div`
     font-size: 12px;
     box-shadow: 0px 0px 20px -10px black;
     font-weight: bold;
-`
+`;

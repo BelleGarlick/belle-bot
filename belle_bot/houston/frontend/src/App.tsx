@@ -11,7 +11,7 @@ function App() {
         <div style={{ height: "100vh" }}>
             <NavBar page={page} setPage={setPage} />
 
-            <Replays />
+            {page === Page.REPLAYS && <Replays />}
 
             <RoboViz
                 style={{

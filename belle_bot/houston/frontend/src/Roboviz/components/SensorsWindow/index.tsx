@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { useFabricProvider } from "../../Roboviz/contexts/ServerContext.tsx";
 import { RobovizWindow } from "../RobovizWindow";
 import { renderCameraImage, renderOdometryData } from "./renderer.ts";
-import { fromNumpyF32 } from "../../Roboviz/utils.tsx";
 import { ODOM_HISTORY, type OdometryItem, Sensor } from "./utils.ts";
 import type { SwitcherI } from "../RobovizWindow/Switcher.tsx";
+import { fromNumpyF32 } from "../../utils.tsx";
+import { useFabricProvider } from "../../contexts/ServerContext.tsx";
 
 export function SensorWindow() {
     const { listen, stopListening } = useFabricProvider();

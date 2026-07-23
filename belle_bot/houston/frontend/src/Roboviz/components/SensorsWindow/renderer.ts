@@ -1,6 +1,6 @@
-import { THEME } from "../../Roboviz/utils.tsx";
 import { ODOM_HISTORY, type OdometryItem } from "./utils.ts";
 import type { WindowSize } from "../RobovizWindow/utils.ts";
+import { THEME } from "../../utils.tsx";
 
 export function renderCameraImage(
     ctx: CanvasRenderingContext2D,
