@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 import numpy as np
 
 import torch
@@ -6,13 +8,12 @@ import torch.nn.functional as F
 
 from belle_bot.mapping.positioning.training.create_dataset import load_dataset, ImuData
 from belle_bot.mapping.positioning.training.models import GpsPoint
-
+from belle_bot.mapping.positioning.training.normalisation import NormalisationBounds
 
 device = torch.device('mps')
 
-
 # realistically, i think the best thing to do is to jus use frames which embed the diff item
-def transform_frame(x, tokens=100):
+def transform_frame(x, normaliser_bounds):
     first_gps_pos: GpsPoint = x.gps[0]
     x0, y0, alt0 = first_gps_pos.x, first_gps_pos.y, first_gps_pos.altitude
 
@@ -22,52 +23,71 @@ def transform_frame(x, tokens=100):
     # todo encode the distance how long before the entry is as a data in the frame relative to the point at which the prediction is to be made for
 
     output_gps = x.gps[-1]
-    x.gps.remove(output_gps)
+    input_gps = x.gps[:-1]
 
-    all_data = sorted(x.gps + x.imu, key=lambda x: x.timestamp)
-    all_data = all_data[-tokens:]
+    all_data = sorted(input_gps + x.imu, key=lambda x: x.timestamp)
 
     modality_types = []
     modality_data = []
 
     for item in all_data:
         if isinstance(item, ImuData):
-            modality_types.append(0)
-            # todo change the angle to cos / sin so taht it's measured a lil better at the point hte loop happens
-            modality_data.append(np.hstack((item.acc, item.gyro / 90, item.angle / 180)))
+            if np.random.uniform() < 0.8:
+                # Update normalisation if possible
+                normalisation_bounds.update("imu.acc", np.max(np.abs(item.acc)))
+                normalisation_bounds.update("imu.gyro", np.max(np.abs(item.gyro)))
+                normalisation_bounds.update("imu.angle", np.max(np.abs(item.angle)))
+
+                # Update the modality data
+                # todo change the angle to cos / sin so that it's measured a lil better at the point from -180 to 180
+                modality_types.append(0)
+                modality_data.append(np.hstack((
+                    item.acc / normalisation_bounds['imu.acc'],
+                    item.gyro / normalisation_bounds['imu.gyro'],
+                    item.angle / normalisation_bounds['imu.angle']
+                )))
 
         elif isinstance(item, GpsPoint):
-            modality_types.append(1)
-            # tODO change the normalisationj. automate it
-            gps_datum = np.array([
-                (item.x - x0) / 30,
-                (item.y - y0) / 30,
-                (item.altitude - alt0)
-            ] + [0] * 6)
-            modality_data.append(gps_datum)  # padded the item so everything is same size
+            if np.random.uniform() < 0.8:
+                delta_x = item.x - x0
+                delta_y = item.y - y0
+                delta_alt = item.altitude - alt0
+
+                # Update normalisation bounds (if enabled)
+                normalisation_bounds.update("gps.x", abs(delta_x))
+                normalisation_bounds.update("gps.y", abs(delta_y))
+
+                # Update the modality data
+                modality_types.append(1)
+                modality_data.append(np.array([
+                    delta_x / normalisation_bounds["gps.x"],
+                    delta_y / normalisation_bounds["gps.y"],
+                    delta_alt
+                ] + [0] * 6))  # padded the item so everything is same size
 
         else:
             # split up camera into multiple tokens
             raise NotImplementedError()
 
-    if np.array(modality_data).min() < -100:
-        breakpoint()
-
     return (
-        np.array(modality_types),
-        np.array(modality_data),
+        np.array(modality_types[-100:]),
+        np.array(modality_data[-100:]),
         [x0, y0, alt0],  # allows us to get true position
-        [(output_gps.x - x0) / 30, (output_gps.y - y0) / 30, output_gps.altitude - alt0]  # allows us to estimate the final position
+        [
+            (output_gps.x - x0) / normalisation_bounds["gps.x"],
+            (output_gps.y - y0) / normalisation_bounds["gps.y"],
+            output_gps.altitude - alt0
+        ]  # allows us to estimate the final position
     )
 
 
-def transform(x):
+def transform(x, normaliser_bounds):
     modality_types = []
     modality_frames = []
     ys = []
 
     for item in x:
-        modality_type, modality_data, _, y = transform_frame(item)
+        modality_type, modality_data, _, y = transform_frame(item, normaliser_bounds)
         modality_types.append(modality_type)
         modality_frames.append(modality_data)
         ys.append(y)
@@ -132,20 +152,22 @@ def batchify(x, batch_size=16):
 
 
 if __name__ == "__main__":
-    train_x, val_x = load_dataset()
-    train_x = transform(train_x)
-    val_x = transform(val_x)
+    train_replays, val_replays = load_dataset()
+
+    normalisation_bounds = NormalisationBounds().fit(train_replays)
 
     model = UnifiedSequenceTransformer(100, 9, 5).to(device)
     optimizer = torch.optim.AdamW(model.parameters())
 
-    # todo need to normalise
-
     # todo maybe pass each of the items in and a sequece order to pair them up in the model...
 
     for epoch in range(100):
-        # todo batch
-        epoch_loss = []
+        train_x = transform(train_replays, normalisation_bounds)
+        val_x = transform(val_replays, normalisation_bounds)
+
+        # Perform training
+        model.train()
+        train_epoch_loss = []
         for modality_types, modality_frames, ys in batchify(train_x):
             optimizer.zero_grad()
 
@@ -155,6 +177,18 @@ if __name__ == "__main__":
             loss.backward()
             optimizer.step()
 
-            epoch_loss.append(loss.item())
+            train_epoch_loss.append(loss.item())
 
-        print(np.mean(epoch_loss))
+        # Run validation
+        val_epoch_loss = []
+        model.eval()
+        with torch.no_grad():
+            for modality_types, modality_frames, ys in batchify(val_x):
+                optimizer.zero_grad()
+
+                prediction = model(modality_frames, modality_types)
+                loss = F.mse_loss(prediction, ys)
+
+                val_epoch_loss.append(loss.item())
+
+        print(np.mean(train_epoch_loss), np.mean(val_epoch_loss))
