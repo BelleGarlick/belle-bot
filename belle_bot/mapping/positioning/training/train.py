@@ -1,5 +1,3 @@
-from collections import defaultdict
-
 import numpy as np
 
 import torch
@@ -7,76 +5,61 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from belle_bot.mapping.positioning.training.create_dataset import load_dataset, ImuData
-from belle_bot.mapping.positioning.training.models import GpsPoint
+from belle_bot.mapping.positioning.training.models import GpsPoint, GPSReplay
 from belle_bot.mapping.positioning.training.normalisation import NormalisationBounds
 
 device = torch.device('mps')
 
 # realistically, i think the best thing to do is to jus use frames which embed the diff item
-def transform_frame(x, normaliser_bounds):
-    first_gps_pos: GpsPoint = x.gps[0]
+def transform_frame(x: GPSReplay, normaliser_bounds):
+    first_gps_pos: GpsPoint = [item for item in x.events if isinstance(item, GpsPoint)][0]
     x0, y0, alt0 = first_gps_pos.x, first_gps_pos.y, first_gps_pos.altitude
 
-    # todo, take out the las tgps item
+    # todo notmalisation is currently based globally on the initial position. We need to make it rotation agnostic and position agnostic. e.g. if gps isn't given we still need to estimate the position and maybe do a delta pos rather than global
     # todo also make make it so that eventually we can make something more stochastic where frames are dropped / not perfectly discrete.
     # todo eventually change the first position change so instead we just predict relative point maybe
     # todo encode the distance how long before the entry is as a data in the frame relative to the point at which the prediction is to be made for
-
-    output_gps = x.gps[-1]
-    input_gps = x.gps[:-1]
-
-    all_data = sorted(input_gps + x.imu, key=lambda x: x.timestamp)
+    # todo create a way to visualise the predicted position as the data streams in
 
     modality_types = []
     modality_data = []
 
-    for item in all_data:
+    for item in x.events:
         if isinstance(item, ImuData):
-            if np.random.uniform() < 0.8:
-                # Update normalisation if possible
-                normalisation_bounds.update("imu.acc", np.max(np.abs(item.acc)))
-                normalisation_bounds.update("imu.gyro", np.max(np.abs(item.gyro)))
-                normalisation_bounds.update("imu.angle", np.max(np.abs(item.angle)))
-
-                # Update the modality data
-                # todo change the angle to cos / sin so that it's measured a lil better at the point from -180 to 180
-                modality_types.append(0)
-                modality_data.append(np.hstack((
-                    item.acc / normalisation_bounds['imu.acc'],
-                    item.gyro / normalisation_bounds['imu.gyro'],
-                    item.angle / normalisation_bounds['imu.angle']
-                )))
+            # Update the modality data
+            # todo change the angle to cos / sin so that it's measured a lil better at the point from -180 to 180
+            modality_types.append(0)
+            modality_data.append(np.hstack((
+                item.acc / normalisation_bounds['imu.acc'],
+                item.gyro / normalisation_bounds['imu.gyro'],
+                item.angle / normalisation_bounds['imu.angle']
+            )))
 
         elif isinstance(item, GpsPoint):
-            if np.random.uniform() < 0.8:
-                delta_x = item.x - x0
-                delta_y = item.y - y0
-                delta_alt = item.altitude - alt0
+            delta_x = item.x - x0
+            delta_y = item.y - y0
+            delta_alt = item.altitude - alt0
 
-                # Update normalisation bounds (if enabled)
-                normalisation_bounds.update("gps.x", abs(delta_x))
-                normalisation_bounds.update("gps.y", abs(delta_y))
-
-                # Update the modality data
-                modality_types.append(1)
-                modality_data.append(np.array([
-                    delta_x / normalisation_bounds["gps.x"],
-                    delta_y / normalisation_bounds["gps.y"],
-                    delta_alt
-                ] + [0] * 6))  # padded the item so everything is same size
+            # Update the modality data
+            modality_types.append(1)
+            modality_data.append(np.array([
+                delta_x / normalisation_bounds["gps.x"],
+                delta_y / normalisation_bounds["gps.y"],
+                delta_alt / normalisation_bounds["gps.alt"],
+            ] + [0] * 6))  # padded the item so everything is same size
 
         else:
             # split up camera into multiple tokens
             raise NotImplementedError()
 
     return (
-        np.array(modality_types[-100:]),
-        np.array(modality_data[-100:]),
+        np.array(modality_types),
+        np.array(modality_data),
         [x0, y0, alt0],  # allows us to get true position
         [
-            (output_gps.x - x0) / normalisation_bounds["gps.x"],
-            (output_gps.y - y0) / normalisation_bounds["gps.y"],
-            output_gps.altitude - alt0
+            (x.target.x - x0) / normalisation_bounds["gps.x"],
+            (x.target.y - y0) / normalisation_bounds["gps.y"],
+            (x.target.altitude - alt0) / normalisation_bounds["gps.alt"],
         ]  # allows us to estimate the final position
     )
 
@@ -88,11 +71,15 @@ def transform(x, normaliser_bounds):
 
     for item in x:
         modality_type, modality_data, _, y = transform_frame(item, normaliser_bounds)
+
+        # todo eventually make it so it's jagged by adding padding rather than dropping
+        if len(modality_type) != 100:
+            continue
+
         modality_types.append(modality_type)
         modality_frames.append(modality_data)
         ys.append(y)
 
-    # todo eventually make it so it's jagged
 
     return np.array(modality_types), np.array(modality_frames), np.array(ys)
 
@@ -107,14 +94,11 @@ class UnifiedSequenceTransformer(nn.Module):
 
         # Learnable indicator embeddings for each modality type (not used atm)
         self.modality_embed = nn.Embedding(1, embed_dim)  # 0: imu, 1: gps
+        # todo also need the time embedding
 
-        # Sequence Processor
-
-        self.l1 = nn.Linear(sequence_length * embed_dim, sequence_length)
-        self.l2 = nn.Linear(sequence_length, 3)
-
-        # encoder_layer = nn.TransformerEncoderLayer(d_model=embed_dim, nhead=num_heads, batch_first=True)
-        # self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=embed_dim, nhead=4, batch_first=True)
+        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=2)
+        self.out = nn.Linear(embed_dim, 3)
 
     def forward(self, merged_seq, modality_ids):
         batch_size, seq_len, _ = merged_seq.shape
@@ -127,12 +111,12 @@ class UnifiedSequenceTransformer(nn.Module):
         gps_projection = self.gps_proj(merged_seq)
         combined_projection = imu_projection * imu_mask + gps_projection * gps_mask
 
-        # feed through the network
-        x = self.l1(combined_projection.flatten(1))
-        x = F.relu(x)
-        x = self.l2(x)
-        return x
+        # todo add modality embedding and time embedding
 
+        # feed through the network
+        x = self.transformer(combined_projection)
+        x = self.out(x[:, -1])
+        return x
 
 
 def batchify(x, batch_size=16):
@@ -156,15 +140,14 @@ if __name__ == "__main__":
 
     normalisation_bounds = NormalisationBounds().fit(train_replays)
 
-    model = UnifiedSequenceTransformer(100, 9, 5).to(device)
+    model = UnifiedSequenceTransformer(100, 9, 20).to(device)
     optimizer = torch.optim.AdamW(model.parameters())
 
+    train_x = transform(train_replays, normalisation_bounds)
+    val_x = transform(val_replays, normalisation_bounds)
+
     # todo maybe pass each of the items in and a sequece order to pair them up in the model...
-
-    for epoch in range(100):
-        train_x = transform(train_replays, normalisation_bounds)
-        val_x = transform(val_replays, normalisation_bounds)
-
+    for epoch in range(200):
         # Perform training
         model.train()
         train_epoch_loss = []

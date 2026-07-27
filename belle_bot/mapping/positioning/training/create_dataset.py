@@ -1,12 +1,9 @@
-import base64
 import json
 import os
-from dataclasses import dataclass
 
 import numpy as np
 
-from belle_bot.mapping.positioning.training.models import GpsPoint
-
+from belle_bot.mapping.positioning.training.models import GpsPoint, GPSReplay, ImuData, CameraData
 
 # predict position and confidence
 # need to predict with missing data throughout the input
@@ -18,32 +15,8 @@ from belle_bot.mapping.positioning.training.models import GpsPoint
 #  include camera
 #  have a way to deteriorate the input data so it's not as perfect
 #  should create a webdataset and upload it to houston
+#  change it so we have a way to predict position changes even if missing gps position
 
-
-@dataclass
-class ImuData:
-    timestamp: int
-    gyro: np.ndarray
-    acc: np.ndarray
-    angle: np.ndarray
-
-    @staticmethod
-    def from_data(timestamp, data):
-        parse_datum = lambda key: np.frombuffer(base64.b64decode(data[key]), dtype=np.float32)
-
-        return ImuData(
-            timestamp=timestamp,
-            acc=parse_datum("acc"),
-            gyro=parse_datum("gyro"),
-            angle=parse_datum("angle"),
-        )
-
-
-@dataclass
-class GPSReplay:
-    gps: list[GpsPoint]
-    imu: list[ImuData]
-    # camera: list[CameraFrame]
 
 
 REPLAY_FILE_PATH = "/Users/belle/Developer/belle-bot/replays"
@@ -57,14 +30,27 @@ VALID_FILES = {
 }
 
 
+def calculate_catmull_rom_segment(p0, p1, p2, p3, t):
+    """Calculates points on a single Catmull-Rom segment between p1 and p2."""
+    # T can be a fixed point or an array
+    # Catmull-Rom characteristic matrix coefficients
+    # Formula: 0.5 * ((2*p1) + (-p0 + p2)*t + (2*p0 - 5*p1 + 4*p2 - p3)*t^2 + (-p0 + 3*p1 - 3*p2 + p3)*t^3)
+    point = 0.5 * (
+            (2 * p1) +
+            (-p0 + p2) * t +
+            (2 * p0 - 5 * p1 + 4 * p2 - p3) * (t ** 2) +
+            (-p0 + 3 * p1 - 3 * p2 + p3) * (t ** 3)
+    )
+    return point
+
+
 def open_replay_file(replay_file):
     with open(os.path.join(REPLAY_FILE_PATH, replay_file), "r") as f:
         return f.readlines()
 
 
 def parse_data(lines):
-    gps_coords = []
-    imu_data = []
+    events = []
 
     for line in lines:
         split_tokens = line.split(",")
@@ -74,42 +60,54 @@ def parse_data(lines):
 
         if stream == "sensors/gps":
             if data['has_fix']:
-                gps_coords.append(GpsPoint.from_data(timestamp, data))
+                events.append(GpsPoint.from_data(timestamp, data))
 
-        if stream == "sensors/camera":
-            pass
+        # if stream == "sensors/camera":
+        #     events.append(
+        #         CameraData.from_data(timestamp, data)
+        #     )
 
         if stream == "sensors/imu":
-            imu_data.append(
+            events.append(
                 ImuData.from_data(timestamp, data)
             )
 
-    return GPSReplay(
-        gps=gps_coords,
-        imu=imu_data,
-    )
+    return GPSReplay(events=events)
 
 
-def chunk_replay_file(replay_file):
-    # todo eventually make a better way to interpolate between
-    #  to begin with we will just take all the gps points and take the previous 20s
-    # todo eventually just put everything into a trainable embedding so that we can just put data in as it gets it rather than having a script format
-    # ideally, eventually we just take all data, embed whatever we have and put it in the model to output the position with it's confidence
+def chunk_replay_file(replay_file: GPSReplay, max_events=100):
+    gps_points = [x for x in replay_file.events if isinstance(x, GpsPoint)]
+
+    # todo drop replay events here so that we can train on the model with missing data
     frames = []
-    for point in replay_file.gps[20:]:
-        gps_points = [
-            x for x in replay_file.gps
-            if point.timestamp > x.timestamp > point.timestamp - 20
-        ]
-        imu_points = [
-            x for x in replay_file.imu
-            if point.timestamp > x.timestamp > point.timestamp - 20
-        ]
+    for gps_idx in range(2, len(gps_points) - 2):
+        interp = np.random.random()
+        target_point = calculate_catmull_rom_segment(
+            gps_points[gps_idx - 1].numpy(),
+            gps_points[gps_idx].numpy(),
+            gps_points[gps_idx + 1].numpy(),
+            gps_points[gps_idx + 2].numpy(),
+            t=interp
+        )
+        timestamp = (gps_points[gps_idx + 1].timestamp - gps_points[gps_idx].timestamp) * interp\
+                    + gps_points[gps_idx].timestamp
+
+        # Create the target point
+        target_point = GpsPoint(
+            timestamp=timestamp,
+            x=target_point[0],
+            y=target_point[1],
+            altitude=target_point[2],
+        )
+
+        # Get the 100 events before the current point
+        events = [x for x in replay_file.events if x.timestamp <= target_point.timestamp]
+        events = events[-max_events:]
 
         frames.append(
             GPSReplay(
-                gps=gps_points,
-                imu=imu_points,
+                events=events,
+                target=target_point
             )
         )
 

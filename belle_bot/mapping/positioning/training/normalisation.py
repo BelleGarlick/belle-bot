@@ -23,10 +23,10 @@ class NormalisationBounds:
 
     def fit(self, replays):
         for x in replays:
-            first_gps_pos: GpsPoint = x.gps[0]
+            first_gps_pos: GpsPoint = [item for item in x.events if isinstance(item, GpsPoint)][0]
             x0, y0, alt0 = first_gps_pos.x, first_gps_pos.y, first_gps_pos.altitude
 
-            for item in x.gps + x.imu:
+            for item in x.events:
                 if isinstance(item, ImuData):
                     # Update normalisation if possible
                     self.update("imu.acc", np.max(np.abs(item.acc)))
@@ -36,8 +36,10 @@ class NormalisationBounds:
                 elif isinstance(item, GpsPoint):
                     delta_x = item.x - x0
                     delta_y = item.y - y0
+                    delta_alt = item.altitude - alt0
                     self.update("gps.x", abs(delta_x))
                     self.update("gps.y", abs(delta_y))
+                    self.update("gps.alt", abs(delta_alt))
 
                 else:
                     # split up camera into multiple tokens
