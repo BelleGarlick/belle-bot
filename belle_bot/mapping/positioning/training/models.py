@@ -28,7 +28,7 @@ class GpsPoint:
         )
 
     def numpy(self):
-        return np.array([self.x, self.y, self.altitude])
+        return np.array([self.x, self.y])
 
 
 

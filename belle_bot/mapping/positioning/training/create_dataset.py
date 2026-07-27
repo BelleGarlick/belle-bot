@@ -75,7 +75,7 @@ def parse_data(lines):
     return GPSReplay(events=events)
 
 
-def chunk_replay_file(replay_file: GPSReplay, max_events=100):
+def chunk_replay_file(replay_file: GPSReplay, seq_len=100):
     gps_points = [x for x in replay_file.events if isinstance(x, GpsPoint)]
 
     # todo drop replay events here so that we can train on the model with missing data
@@ -92,17 +92,19 @@ def chunk_replay_file(replay_file: GPSReplay, max_events=100):
         timestamp = (gps_points[gps_idx + 1].timestamp - gps_points[gps_idx].timestamp) * interp\
                     + gps_points[gps_idx].timestamp
 
+        # todo visualise all of this
+
         # Create the target point
         target_point = GpsPoint(
             timestamp=timestamp,
             x=target_point[0],
             y=target_point[1],
-            altitude=target_point[2],
+            altitude=gps_points[gps_idx].altitude,  # todo interpolate this
         )
 
         # Get the 100 events before the current point
         events = [x for x in replay_file.events if x.timestamp <= target_point.timestamp]
-        events = events[-max_events:]
+        events = events[-seq_len:]
 
         frames.append(
             GPSReplay(
@@ -115,7 +117,7 @@ def chunk_replay_file(replay_file: GPSReplay, max_events=100):
 
 
 # TODO create dataset eventually that is stored in the houston thing
-def load_dataset():
+def load_dataset(seq_len):
     all_chunks = []
     for replay_file in replay_files:
         if replay_file not in VALID_FILES: continue
@@ -124,9 +126,7 @@ def load_dataset():
 
         replay_file = parse_data(lines)
 
-        # TODO add smoothing to the line so we can interpolate at any point
-
-        all_chunks += chunk_replay_file(replay_file)
+        all_chunks += chunk_replay_file(replay_file, seq_len=seq_len)
 
     idxs = np.arange(len(all_chunks))
     np.random.shuffle(idxs)

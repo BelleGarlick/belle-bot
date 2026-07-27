@@ -1,3 +1,5 @@
+import json
+
 import numpy as np
 
 from belle_bot.mapping.positioning.training.create_dataset import ImuData
@@ -17,9 +19,9 @@ class NormalisationBounds:
 
     def update(self, key, value):
         if key not in self.normalisation_bounds:
-            self.normalisation_bounds[key] = value
+            self.normalisation_bounds[key] = float(value)
 
-        self.normalisation_bounds[key] = max(self.normalisation_bounds[key], value)
+        self.normalisation_bounds[key] = max(self.normalisation_bounds[key], float(value))
 
     def fit(self, replays):
         for x in replays:
@@ -45,5 +47,16 @@ class NormalisationBounds:
                     # split up camera into multiple tokens
                     raise NotImplementedError()
 
-            return self
+        return self
 
+    def save(self, path):
+        with open(path, "w") as f:
+            json.dump(self.normalisation_bounds, f)
+
+        return self
+
+    def load(self, path):
+        with open(path, "r") as f:
+            self.normalisation_bounds = json.load(f)
+
+        return self
