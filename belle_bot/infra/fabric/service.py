@@ -1,10 +1,19 @@
 import traceback
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
+from fastapi.middleware.cors import CORSMiddleware
 
 from belle_bot.infra.fabric import utils
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # In-memory storage for active websocket connections: stream_name -> list of WebSocket
 active_connections: dict[str, list[WebSocket]] = {}

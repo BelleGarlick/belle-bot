@@ -83,7 +83,7 @@ def query(
         cursor.execute(sql_query)
         count, = cursor.fetchone()
 
-        return [callback(row) for row in rows], count
+        return [callback(json.loads(row[0])) for row in rows], count
     finally:
         conn.close()
 

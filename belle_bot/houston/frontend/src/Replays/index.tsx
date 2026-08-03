@@ -1,20 +1,7 @@
 import { listReplaysReplaysGet } from "../api/api.ts";
 import { useEffect, useState } from "react";
 import { THEME } from "../Roboviz/utils.tsx";
-import { Button, TextField, FileInput } from "../components/inputs/";
-
-// todo create upload form
-
-function UploadForm() {
-    return (
-        <>
-            <TextField label="Name" />
-            <TextField label="Description" />
-            <FileInput />
-            <Button>Upload</Button>
-        </>
-    );
-}
+import { UploadForm } from "./UploadForm.tsx";
 
 export function Replays() {
     const [replays, setReplays] = useState([]);

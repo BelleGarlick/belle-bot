@@ -1,5 +1,6 @@
 import json
 import asyncio
+import re
 import sqlite3
 
 from belle_bot.infra.fabric import FabricClient
@@ -10,45 +11,33 @@ This module allows for replaying the given event
 """
 
 # LOGS_DIR = "/Users/belle/Developer/belle-bot/replays/"
-PATH = "/Users/belle/Developer/belle-bot/replays/f522277d-ef84-4327-9ed1-26a4017ff32e.db"
+PATH = "/Users/belle/Developer/belle-bot/replays/c6d2c516-252c-4844-9743-40a293813ebe.txt"
 
 
 PAGE_LENGTH = 100
-CLIENT = FabricClient()
+CLIENT = FabricClient(host="0.0.0.0")
 LOOP = True
 
 
 def get_logs(limit: int = None, offset: int = None):
-    all_rows = []
+    with open(PATH, "r") as f:
+        lines = f.readlines()
 
-    try:
-        conn = sqlite3.connect(PATH)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
+    split_lines = []
+    for line in lines:
+        split = line.split(",")
 
-        # Check if table exists
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='service_logs'")
-        if not cursor.fetchone():
-            conn.close()
+        key = split[0]
+        time = split[1]
+        remaining = ",".join(split[2:])
 
-        query = "SELECT * FROM service_logs"
-        cursor.execute(query)
-        rows = cursor.fetchall()
-        all_rows.extend([dict(row) for row in rows])
-        conn.close()
-    except sqlite3.Error:
-        pass
+        split_lines.append({
+            "stream": key,
+            "timestamp": float(time),
+            "value": json.loads(remaining)
+        })
 
-    # Sort all rows by timestamp since files are UUID-named and might not be in order
-    all_rows.sort(key=lambda x: float(x["timestamp"]))
-
-    # Apply limit and offset
-    if offset is not None:
-        all_rows = all_rows[offset:]
-    if limit is not None:
-        all_rows = all_rows[:limit]
-
-    return all_rows
+    return split_lines
 
 
 async def main():
@@ -63,12 +52,12 @@ async def main():
             if last_item_time is not None:
                 wait_time = (current_item_time - last_item_time)
                 if wait_time > 0:
-                    await asyncio.sleep(wait_time / 4)
+                    await asyncio.sleep(wait_time)
             
             last_item_time = current_item_time
 
             # Run this async
-            asyncio.create_task(CLIENT.publish_async(item["service_name"], json.loads(item['value'])))
+            asyncio.create_task(CLIENT.publish_async(item["stream"], item['value']))
 
         page += 1
         items = get_logs(limit=PAGE_LENGTH, offset=page * PAGE_LENGTH)

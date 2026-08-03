@@ -1,17 +1,13 @@
 import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class Replay(BaseModel):
 
     replay_id: str
 
-    firmware_version: str
-
-    hardware_version: str
-
-    physical_device: str
+    platform: str | None = None
 
     filename: str
 

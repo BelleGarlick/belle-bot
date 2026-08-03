@@ -24,7 +24,7 @@ print(json.dumps(api.openapi()))
 # orval must be installed (e.g., via npm install -g orval)
 
 cd frontend
-npx orval --input ../openapi.json --output src/api/api.ts --client fetch
+npx orval --config orval.config.ts
 
 # Clean up
 rm ../openapi.json

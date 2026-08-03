@@ -1,5 +1,3 @@
-import datetime
-
 from fastapi import UploadFile, APIRouter, HTTPException, Query, Form, File, Response
 from houston_server_core import replays as core
 from houston_server_persistence.replay import Replay
@@ -11,24 +9,18 @@ replay_router = APIRouter(prefix="/replays", tags=["Replays"])
 async def upload_replay(
         file: UploadFile = File(...),
         filename: str = Form(...),
-        firmware_version: str = Form(...),
-        physical_device: str = Form(...),
+        platform: str | None = Form(default=None),
         tags: list[str] = Form(default_factory=list),
-        description: str = Form(...),
-        permanent: bool = Form(...),
-        start_time: datetime.datetime = Form(...),
-        end_time: datetime.datetime = Form(...)
+        description: str | None = Form(default=None),
+        permanent: bool = Form(default=False),
 ) -> Replay:
     if len(tags) == 1 and "," in tags[0]:
         tags = [t.strip() for t in tags[0].split(",")]
 
     return core.upload_replay(
         filename=filename,
-        firmware_version=firmware_version,
-        physical_device=physical_device,
+        platform=platform,
         permanent=permanent,
-        start_time=start_time,
-        end_time=end_time,
         tags=tags,
         description=description,
         upload=file,
