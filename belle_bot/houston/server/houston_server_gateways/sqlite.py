@@ -5,10 +5,13 @@ from typing import Callable, TypeVar
 
 from pydantic import BaseModel
 
+from houston_server_gateways.utils import get_houston_data_root
+
 T = TypeVar("T", bound=BaseModel)
 TReturn = TypeVar("TReturn")
 
-REPLAYS_DB_PATH = os.environ.get("REPLAYS_DB_PATH", "houston.db")
+REPLAYS_DB_PATH = get_houston_data_root() / "houston.db"
+
 
 def get_connection():
     conn = sqlite3.connect(REPLAYS_DB_PATH)

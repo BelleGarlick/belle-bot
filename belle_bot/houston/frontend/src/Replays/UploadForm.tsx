@@ -16,26 +16,62 @@ export function UploadForm() {
             return;
         }
 
-        const file = files[0];
-        const res = await uploadReplayReplaysPost({
-            file: file,
-            filename: name || file.name,
-            description: description,
-            platform,
-            permanent: permanent,
-            tags: tags,
-        });
+        if (files.length === 1) {
+            const file = files[0];
+            const res = await uploadReplayReplaysPost({
+                file: file,
+                filename: name.length > 0 ? name : null,
+                description: description,
+                platform,
+                permanent: permanent,
+                tags: tags,
+            });
 
-        if (res.status === 200) {
+            if (res.status === 200) {
+                alert("Upload successful");
+            } else {
+                alert("Upload failed: " + JSON.stringify(res.data));
+            }
+            return;
+        }
+
+        let successCount = 0;
+        let failCount = 0;
+        const errors: string[] = [];
+
+        for (const file of files) {
+            const res = await uploadReplayReplaysPost({
+                file: file,
+                filename: name.length > 0 ? name : null,
+                description: description,
+                platform,
+                permanent: permanent,
+                tags: tags,
+            });
+
+            if (res.status === 200) {
+                successCount++;
+            } else {
+                failCount++;
+                errors.push(`${file.name}: ${JSON.stringify(res.data)}`);
+            }
+        }
+
+        if (failCount === 0) {
             alert("Upload successful");
         } else {
-            alert("Upload failed: " + JSON.stringify(res.data));
+            alert(`Uploaded ${successCount} files. Failed ${failCount} files:\n` + errors.join("\n"));
         }
     };
 
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <FileInput files={files} setFiles={setFiles} />
+            <FileInput files={files} setFiles={setFiles} multi />
+            {files && files.length > 0 && (
+                <div style={{ fontSize: "14px", color: "#666" }}>
+                    Selected files: {files.map((f) => f.name).join(", ")}
+                </div>
+            )}
             <TextField label="Name" value={name} onChange={setName} />
             <TextField
                 label="Description"

@@ -1,24 +1,14 @@
 import os
 import shutil
 
+from houston_server_gateways.utils import get_houston_data_root
 
-REPLAY_STORE_PATH = os.environ.get("REPLAY_STORE_PATH", "replays")
+REPLAY_STORE_PATH = get_houston_data_root()
 
 
 def initialise():
     if not os.path.exists(REPLAY_STORE_PATH):
         os.makedirs(REPLAY_STORE_PATH)
-
-
-def move_to_store(source_path: str, filename: str) -> str:
-    """
-    Moves a file from source_path to the replay store.
-    Returns the new path of the file.
-    """
-    initialise()
-    destination_path = os.path.join(REPLAY_STORE_PATH, filename)
-    shutil.move(source_path, destination_path)
-    return destination_path
 
 
 def delete_from_store(path: str):
@@ -31,9 +21,12 @@ def delete_from_store(path: str):
 
 def save_upload(directory_name, upload, model_id):
     file_type = upload.filename.split(".")[-1]
-    file_path = directory_name + "/" + model_id + "." + file_type
+    file_name = model_id + "." + file_type
+    file_path = REPLAY_STORE_PATH / directory_name / file_name
+
+    os.makedirs(REPLAY_STORE_PATH / directory_name, exist_ok=True)
 
     with open(file_path, "wb+") as destination:
         destination.write(upload.file.read())
 
-    return file_path
+    return file_name

@@ -14,11 +14,11 @@ export interface BodyUploadModelModelsPost {
 
 export interface BodyUploadReplayReplaysPost {
   file: Blob;
-  filename: string;
-  platform: string;
+  filename?: string | null;
+  platform?: string | null;
   tags?: string[];
-  description: string;
-  permanent: boolean;
+  description?: string | null;
+  permanent?: boolean;
 }
 
 export type ValidationErrorCtx = { [key: string]: unknown };
@@ -48,8 +48,8 @@ export interface Model {
 
 export interface Replay {
   replay_id: string;
-  platform: string;
-  filename: string;
+  platform?: string | null;
+  filename?: string | null;
   path: string;
   description?: string | null;
   start_time?: string | null;
@@ -100,13 +100,21 @@ export const getUploadReplayReplaysPostUrl = () => {
 export const uploadReplayReplaysPost = async (bodyUploadReplayReplaysPost: BodyUploadReplayReplaysPost, options?: RequestInit): Promise<uploadReplayReplaysPostResponse> => {
     const formData = new FormData();
 formData.append(`file`, bodyUploadReplayReplaysPost.file);
-formData.append(`filename`, bodyUploadReplayReplaysPost.filename);
-formData.append(`platform`, bodyUploadReplayReplaysPost.platform);
+if(bodyUploadReplayReplaysPost.filename !== undefined && bodyUploadReplayReplaysPost.filename !== null) {
+ formData.append(`filename`, bodyUploadReplayReplaysPost.filename);
+ }
+if(bodyUploadReplayReplaysPost.platform !== undefined && bodyUploadReplayReplaysPost.platform !== null) {
+ formData.append(`platform`, bodyUploadReplayReplaysPost.platform);
+ }
 if(bodyUploadReplayReplaysPost.tags !== undefined) {
  bodyUploadReplayReplaysPost.tags.forEach(value => formData.append(`tags`, value));
  }
-formData.append(`description`, bodyUploadReplayReplaysPost.description);
-formData.append(`permanent`, bodyUploadReplayReplaysPost.permanent.toString())
+if(bodyUploadReplayReplaysPost.description !== undefined && bodyUploadReplayReplaysPost.description !== null) {
+ formData.append(`description`, bodyUploadReplayReplaysPost.description);
+ }
+if(bodyUploadReplayReplaysPost.permanent !== undefined) {
+ formData.append(`permanent`, bodyUploadReplayReplaysPost.permanent.toString())
+ }
 
   const res = await fetch(getUploadReplayReplaysPostUrl(),
   {

@@ -1,5 +1,4 @@
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from houston_server_api import routes
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware

@@ -1,4 +1,5 @@
 import houston_server_gateways
+from houston_server_gateways.utils import get_houston_data_root
 
 
 class PersistenceManager[T]:
@@ -16,6 +17,9 @@ class PersistenceManager[T]:
             upload,
             item_id
         )
+
+    def get_file_path(self, path):
+        return get_houston_data_root() / self.key / path
 
     def save_model(self, item_id, item: T) -> T:
         return houston_server_gateways.sqlite.put(

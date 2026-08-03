@@ -33,10 +33,10 @@ def readlast(f):
 
 
 def upload_replay(
-    filename: str,
-    tags: list[str],
     upload: UploadFile,
+    tags: list[str],
     platform: str | None = None,
+    filename: str | None = None,
     permanent: bool = False,
     description: str | None = None
 ) -> Replay:
@@ -44,7 +44,7 @@ def upload_replay(
 
     path = replays_persistence.save_upload(replay_id, upload)
 
-    with open(path, "rb") as f:
+    with open(replays_persistence.get_file_path(path), "rb") as f:
         first = f.readline().decode("utf-8")
         last = readlast(f).decode("utf-8")
 

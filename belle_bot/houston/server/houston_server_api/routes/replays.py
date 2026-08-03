@@ -8,7 +8,7 @@ replay_router = APIRouter(prefix="/replays", tags=["Replays"])
 @replay_router.post("/")
 async def upload_replay(
         file: UploadFile = File(...),
-        filename: str = Form(...),
+        filename: str | None = Form(default=None),
         platform: str | None = Form(default=None),
         tags: list[str] = Form(default_factory=list),
         description: str | None = Form(default=None),

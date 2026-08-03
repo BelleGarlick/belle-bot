@@ -1,6 +1,6 @@
 import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class Replay(BaseModel):
@@ -9,7 +9,7 @@ class Replay(BaseModel):
 
     platform: str | None = None
 
-    filename: str
+    filename: str | None = None
 
     path: str
 
