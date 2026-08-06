@@ -1,5 +1,6 @@
 import base64
 from dataclasses import dataclass
+from enum import Enum
 
 import cv2
 import numpy as np
@@ -10,12 +11,19 @@ from pyproj import Transformer
 transformer = Transformer.from_crs("EPSG:4326", "EPSG:32630", always_xy=True)
 
 
+class ModalityEnum(int, Enum):
+    PAD = 0
+    IMU = 1
+    GPS = 2
+
+
 @dataclass
 class GpsPoint:
     timestamp: float
     x: float
     y: float
     altitude: float
+    name: str | None = None
 
     @staticmethod
     def from_data(timestamp, data: dict):
@@ -27,8 +35,11 @@ class GpsPoint:
             altitude=float(data["altitude"])
         )
 
-    def numpy(self):
-        return np.array([self.x, self.y])
+    def numpy(self) -> np.ndarray:
+        return np.array([self.x, self.y, self.altitude])
+
+    def copy(self):
+        return GpsPoint(**self.__dict__)
 
 
 
@@ -38,6 +49,7 @@ class ImuData:
     gyro: np.ndarray
     acc: np.ndarray
     angle: np.ndarray
+    name: str | None = None
 
     @staticmethod
     def from_data(timestamp, data):
@@ -49,6 +61,9 @@ class ImuData:
             gyro=parse_datum("gyro"),
             angle=parse_datum("angle"),
         )
+
+    def copy(self):
+        return ImuData(**self.__dict__)
 
 
 
@@ -67,8 +82,5 @@ class CameraData:
             frame=frame,
         )
 
-
-@dataclass
-class GPSReplay:
-    events: list[GpsPoint | ImuData | CameraData]
-    target: GpsPoint | None = None
+    def copy(self):
+        return CameraData(**self.__dict__)

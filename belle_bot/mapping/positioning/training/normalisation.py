@@ -2,7 +2,6 @@ import json
 
 import numpy as np
 
-from belle_bot.mapping.positioning.training.create_dataset import ImuData
 from belle_bot.mapping.positioning.training.models import GpsPoint
 
 

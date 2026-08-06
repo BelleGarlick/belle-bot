@@ -1,83 +1,71 @@
-import os
-
-import numpy as np
 import torch
+import numpy as np
 
-from belle_bot.mapping.positioning.training.create_dataset import open_replay_file, parse_data
-from belle_bot.mapping.positioning.training.models import GpsPoint, GPSReplay, ImuData, CameraData
+from belle_bot.mapping.positioning.training.train import MAX_SNAP_GPS_DISTANCE, SEQUENCE_LENGTH, process_state
+from belle_bot.mapping.positioning.training.environment import Environment
+from belle_bot.mapping.positioning.training.ml_model import UnifiedSequenceTransformer, PositionalModelling
 from belle_bot.mapping.positioning.training.normalisation import NormalisationBounds
-from belle_bot.mapping.positioning.training.train import transform_frame, UnifiedSequenceTransformer, device, \
-    SEQUENCE_LENGTH
 
-# predict position and confidence
-# need to predict with missing data throughout the input
-
+# todo add heuristic to sampling states
+# todo add learning rate decayed based on the step number
+device = torch.device('mps')
 
 
-REPLAY_FILE_PATH = "/Users/belle/Developer/belle-bot/replays"
-replay_files = os.listdir(REPLAY_FILE_PATH)
-
-
-VALID_FILES = {
-    "14240eda-3dfc-48e0-921b-c22397ca0981.txt",
-    "5ba31b5c-b457-4c80-9dc4-2f42d9f61a9f.txt",
-    # "87d554ee-3d54-4440-85cb-756f0c234067.txt"
-}
-
+# todo change to in memory state to feed in one at a time
 
 if __name__ == "__main__":
-    normalisation_bounds = NormalisationBounds().load("bounds.json")
-    model = UnifiedSequenceTransformer(SEQUENCE_LENGTH, 9, 256, nhead=32).to(device)
-    model.load_state_dict(torch.load("model.pt", weights_only=True))
-    model.eval()
+    bounds = NormalisationBounds()\
+        .load("bounds.json")
 
-    for replay_file in replay_files:
-        if replay_file not in VALID_FILES: continue
-        if replay_file[0] == ".": continue
-        lines = open_replay_file(replay_file)
+    model = PositionalModelling(10, 320).to(device)
+    model.load_state_dict(torch.load("model-70000.pt"))
 
-        replay_file = parse_data(lines)
+    env = Environment(random_subsample=False, seq_len=100)
+    # we should instead sample this like it's a rl environment so every x steps we train on some of the given steps
 
-        predicted_positions = []
-        real_positiosn = []
+    with torch.no_grad():
+        for i in range(len(env)):
+            model.eval()
 
-        current_window = []
-        for event in replay_file.events:
-            if isinstance(event, GpsPoint):
-                real_positiosn.append((event.x, event.y))
+            position = env.reset()
+            # Start sample from the environment
+            episode_step_error = []
+            episode_losses = []
 
-            current_window.append(event)
-            current_window = current_window[-SEQUENCE_LENGTH:]
-            if len(current_window) != SEQUENCE_LENGTH:
-                continue
+            true_positions = []
+            predicted_positions = []
 
-            modality_type, modality_frames, times, relative_pos, _ = transform_frame(GPSReplay(current_window), normalisation_bounds)
+            hc = None
+            terminated = False
+            while not terminated:
+                state, position_change, terminated = env.step(position)
+                predicted_positions.append(position.copy())
+                true_positions.append((position + position_change).copy())
 
-            modality_types = torch.tensor(np.expand_dims(modality_type, 0), dtype=torch.long, device=device)
-            modality_frames = torch.tensor(np.expand_dims(modality_frames, 0), dtype=torch.float, device=device)
-            times = torch.tensor(np.expand_dims(times, 0), dtype=torch.float, device=device)
+                # Process and create the model input to what the target change should be
+                modal_data, modal_types = process_state(state, seq_length=1, normalisation_bounds=bounds)
 
-            prediction = model(modality_frames, modality_types, times)
-            prediction = prediction.cpu().detach().numpy()[0]
-            prediction = relative_pos + np.array([
-                prediction[0] * normalisation_bounds['gps.x'],
-                prediction[1] * normalisation_bounds['gps.y'],
-                prediction[2] * normalisation_bounds['gps.alt'],
-            ])
+                # Predict new position
+                predicted_position_change, hc = model(
+                    torch.tensor(modal_data).to(device=device, dtype=torch.float32),
+                    torch.tensor(modal_types).to(device=device, dtype=torch.int64),
+                    hc=hc,
+                    return_state=True,
+                )
+                predicted_position_change = predicted_position_change.detach().cpu().numpy()[0] * MAX_SNAP_GPS_DISTANCE
 
-            predicted_positions.append(prediction)
+                # To prevent errors exploding during instances where the drift increases, if the error is too high,
+                # then we apply the position fix and effectively reset the trajectory
+                # Doing so means we can keep training during this run
+                step_error = np.linalg.norm(position_change - predicted_position_change)
+                episode_step_error += [step_error]
 
-        predicted_positions = np.array(predicted_positions)
-        real_positiosn = np.array(real_positiosn)
+                position += predicted_position_change
 
-        import matplotlib
-        matplotlib.use('macosx')
-        import matplotlib.pyplot as plt
-
-        plt.plot(predicted_positions[:, 0], predicted_positions[:, 1])
-        plt.scatter(real_positiosn[:, 0], real_positiosn[:, 1], s=2, c='green')
-        plt.scatter(predicted_positions[:, 0], predicted_positions[:, 1], s=2, c='red')
-        plt.axis("equal")
-        plt.show()
-
-        # breakpoint()
+            import matplotlib
+            matplotlib.use('macosx')
+            import matplotlib.pyplot as plt
+            plt.plot([x[0] for x in true_positions], [x[1] for x in true_positions])
+            plt.plot([x[0] for x in predicted_positions], [x[1] for x in predicted_positions])
+            plt.axis("equal")
+            plt.show()
