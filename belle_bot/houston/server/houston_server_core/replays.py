@@ -8,15 +8,9 @@ from houston_server_persistence.replay import Replay
 from houston_server_persistence import PersistenceManager
 
 
-def to_model(data) -> Replay:
-    print(data)
-    print(dir(data))
-    print(data.keys())
-    return Replay(**data)
-
 replays_persistence = PersistenceManager[Replay](
     "replays",
-    lambda data: to_model(data)
+    lambda data: Replay(**data)
 )
 
 from os import SEEK_END, SEEK_CUR
@@ -70,7 +64,14 @@ def upload_replay(
 
 
 def get_replay(replay_id: str) -> Replay | None:
-    replays_persistence.get_item(replay_id)
+    return replays_persistence.get_item(replay_id)
+
+
+def update_replay(replay_id: str, replay: Replay) -> Replay | None:
+    existing = get_replay(replay_id)
+    if not existing:
+        return None
+    return replays_persistence.save_model(replay_id, replay)
 
 
 def query_replays(page: int) -> tuple[list[Replay], int]:

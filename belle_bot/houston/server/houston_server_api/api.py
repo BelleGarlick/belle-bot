@@ -12,7 +12,13 @@ middleware = [
         allow_headers=['*']
     )
 ]
-app = FastAPI(middleware=middleware)
+
+
+app = FastAPI(
+    title="Houston API",
+    middleware=middleware,
+    generate_unique_id_function=lambda route: route.name
+)
 
 
 app.include_router(routes.replay_router)

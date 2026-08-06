@@ -1,11 +1,17 @@
 from fastapi import UploadFile, APIRouter, HTTPException, Query, Form, File, Response
 from houston_server_core import models as core
 from houston_server_persistence.models import Model
+from pydantic import BaseModel
 
 models_router = APIRouter(prefix="/models", tags=["Models"])
 
 
-@models_router.post("/")
+class ModelListResponse(BaseModel):
+    models: list[Model]
+    total: int
+
+
+@models_router.post("/", response_model=Model)
 async def upload_model(
         file: UploadFile = File(...),
         name: str = Form(...),
@@ -25,19 +31,19 @@ async def upload_model(
     )
 
 
-@models_router.get("/")
+@models_router.get("/", response_model=ModelListResponse)
 async def list_models(
     page: int | None = Query(None),
-):
+) -> ModelListResponse:
     models, count = core.query_models(page or 0)
-    return {
-        "models": models,
-        "total": count
-    }
+    return ModelListResponse(
+        models=models,
+        total=count
+    )
 
 
 @models_router.get("/{model_id}")
-async def get_model_file(model_id: str):
+async def get_model_file(model_id: str) -> Response:
     model = core.get_model(model_id)
     if not model:
         raise HTTPException(status_code=404, detail="Model not found")
@@ -54,7 +60,7 @@ async def get_model_file(model_id: str):
 
 
 @models_router.get("/{model_id}/info", response_model=Model)
-async def get_model_info(model_id: str):
+async def get_model_info(model_id: str) -> Model:
     model = core.get_model(model_id)
     if not model:
         raise HTTPException(status_code=404, detail="Model not found")
