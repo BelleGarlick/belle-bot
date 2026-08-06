@@ -81,7 +81,7 @@ export function Replays() {
                         replays={selectedReplays}
                         onTagsUpdated={(updatedList) => {
                             setSelectedReplays(updatedList);
-                            listReplaysReplaysGet({ page: 0 }).then((x) => {
+                            listReplays({ page: 0 }).then((x) => {
                                 if (x.status === 200) {
                                     setReplays(x.data);
                                 }
