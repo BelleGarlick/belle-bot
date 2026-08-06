@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 import { THEME } from "../Roboviz/utils.tsx";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const HEIGHT = 50;
 const LINK_WIDTH = 120;
@@ -42,13 +43,33 @@ const Logo = styled.div`
     user-select: none;
 `;
 
-export function NavBar({
-    page,
-    setPage,
-}: {
-    page: Page;
-    setPage: (page: Page) => void;
-}) {
+export function NavBar() {
+    const location = useLocation();
+    const navigate = useNavigate();
+
+    let page = Page.REPLAYS;
+    if (location.pathname.startsWith("/roboviz")) {
+        page = Page.ROBOVIZ;
+    } else if (location.pathname.startsWith("/models")) {
+        page = Page.MODELS;
+    } else if (location.pathname.startsWith("/datasets")) {
+        page = Page.DATASETS;
+    } else if (location.pathname.startsWith("/replays")) {
+        page = Page.REPLAYS;
+    }
+
+    const handleNavigate = (targetPage: Page) => {
+        if (targetPage === Page.REPLAYS) {
+            navigate("/replays");
+        } else if (targetPage === Page.ROBOVIZ) {
+            navigate("/roboviz");
+        } else if (targetPage === Page.MODELS) {
+            navigate("/models");
+        } else if (targetPage === Page.DATASETS) {
+            navigate("/datasets");
+        }
+    };
+
     return (
         <div
             style={{
@@ -64,8 +85,9 @@ export function NavBar({
 
             {pages.map((x) => (
                 <NavBarLink
+                    key={x.page}
                     theme={page === x.page ? THEME : undefined}
-                    onClick={() => setPage(x.page)}
+                    onClick={() => handleNavigate(x.page)}
                 >
                     {x.text}
                 </NavBarLink>

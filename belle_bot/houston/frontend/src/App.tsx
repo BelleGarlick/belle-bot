@@ -1,24 +1,32 @@
 import "./App.css";
 import { RoboViz } from "./Roboviz";
-import { NavBar, Page } from "./Navbar";
-import { useState } from "react";
-import {Replays} from "./Replays";
+import { NavBar } from "./Navbar";
+import { Replays } from "./Replays";
+import { ReplayDetail } from "./Replays/ReplayDetail.tsx";
+import { Routes, Route, Navigate } from "react-router-dom";
 
 function App() {
-    const [page, setPage] = useState(Page.REPLAYS);
-
     return (
         <div style={{ height: "100vh" }}>
-            <NavBar page={page} setPage={setPage} />
+            <NavBar />
 
-            {page === Page.REPLAYS && <Replays />}
-
-            <RoboViz
-                style={{
-                    display: page === Page.ROBOVIZ ? "grid" : "none",
-                    height: "100%",
-                }}
-            />
+            <div style={{ height: "calc(100% - 50px)" }}>
+                <Routes>
+                    <Route
+                        path="/roboviz"
+                        element={<RoboViz style={{ height: "100%" }} />}
+                    />
+                    <Route path="/replays" element={<Replays />} />
+                    <Route
+                        path="/replays/:replayId"
+                        element={<ReplayDetail />}
+                    />
+                    <Route
+                        path="*"
+                        element={<Navigate to="/replays" replace />}
+                    />
+                </Routes>
+            </div>
         </div>
     );
 }

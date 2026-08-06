@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { THEME } from "../../Roboviz/utils.tsx";
+import { Tags } from "./Tags.tsx";
 
 export function TagsInput({
     label,
@@ -51,44 +52,7 @@ export function TagsInput({
                     fontStyle: "monospace",
                 }}
             />
-            <div
-                style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: 8,
-                    marginTop: 4,
-                }}
-            >
-                {tags.map((tag, index) => (
-                    <div
-                        key={index}
-                        style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                            backgroundColor: `${THEME}15`,
-                            border: `1px solid ${THEME}`,
-                            borderRadius: 8,
-                            padding: "2px 10px",
-                            fontSize: "14px",
-                            fontFamily: "monospace",
-                            color: THEME,
-                        }}
-                    >
-                        <span>{tag}</span>
-                        <span
-                            onClick={() => removeTag(index)}
-                            style={{
-                                cursor: "pointer",
-                                fontWeight: "bold",
-                                paddingLeft: 2,
-                            }}
-                        >
-                            &times;
-                        </span>
-                    </div>
-                ))}
-            </div>
+            <Tags tags={tags} onRemove={removeTag} />
         </div>
     );
 }

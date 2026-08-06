@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Button, FileInput, TextField, TagsInput } from "../components/inputs";
-import { uploadReplayReplaysPost } from "../api/api.ts";
+import { Button, FileInput, TextField } from "../components/inputs";
+import { uploadReplay } from "../api/api.ts";
+import { TagsInput } from "../components/tags/TagsInput.tsx";
 
 export function UploadForm() {
     const [name, setName] = useState("");
@@ -18,7 +19,7 @@ export function UploadForm() {
 
         if (files.length === 1) {
             const file = files[0];
-            const res = await uploadReplayReplaysPost({
+            const res = await uploadReplay({
                 file: file,
                 filename: name.length > 0 ? name : null,
                 description: description,
@@ -40,7 +41,7 @@ export function UploadForm() {
         const errors: string[] = [];
 
         for (const file of files) {
-            const res = await uploadReplayReplaysPost({
+            const res = await uploadReplay({
                 file: file,
                 filename: name.length > 0 ? name : null,
                 description: description,
@@ -60,7 +61,10 @@ export function UploadForm() {
         if (failCount === 0) {
             alert("Upload successful");
         } else {
-            alert(`Uploaded ${successCount} files. Failed ${failCount} files:\n` + errors.join("\n"));
+            alert(
+                `Uploaded ${successCount} files. Failed ${failCount} files:\n` +
+                    errors.join("\n"),
+            );
         }
     };
 
