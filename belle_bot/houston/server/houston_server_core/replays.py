@@ -67,6 +67,13 @@ def get_replay(replay_id: str) -> Replay | None:
     return replays_persistence.get_item(replay_id)
 
 
+def get_replay_object(replay: Replay) -> str | None:
+    file_path = replays_persistence.get_file_path(replay.path)
+    if file_path.exists():
+        return str(file_path)
+    return None
+
+
 def update_replay(replay_id: str, replay: Replay) -> Replay | None:
     existing = get_replay(replay_id)
     if not existing:
@@ -74,5 +81,5 @@ def update_replay(replay_id: str, replay: Replay) -> Replay | None:
     return replays_persistence.save_model(replay_id, replay)
 
 
-def query_replays(page: int) -> tuple[list[Replay], int]:
-    return replays_persistence.query_items(page)
+def query_replays(page: int, tags: list[str] | None = None) -> tuple[list[Replay], int]:
+    return replays_persistence.query_items(page, tags=tags)

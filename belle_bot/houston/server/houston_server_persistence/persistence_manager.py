@@ -19,7 +19,7 @@ class PersistenceManager[T]:
         )
 
     def get_file_path(self, path):
-        return get_houston_data_root() / self.key / path
+        return (get_houston_data_root() / self.key / path).absolute()
 
     def save_model(self, item_id, item: T) -> T:
         return houston_server_gateways.sqlite.put(
@@ -35,11 +35,13 @@ class PersistenceManager[T]:
             self.dict_to_model
         )
 
-    def query_items(self, page: int) -> tuple[list[T], int]:
+    def query_items(self, page: int, tags: list[str] | None = None) -> tuple[list[T], int]:
+        print(tags)
         return houston_server_gateways.sqlite.query(
             self.key,
             page,
-            self.dict_to_model
+            self.dict_to_model,
+            tags=tags
         )
 
     # def delete_replay(self, replay_id: str):

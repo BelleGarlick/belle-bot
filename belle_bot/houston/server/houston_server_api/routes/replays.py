@@ -1,4 +1,5 @@
 from fastapi import UploadFile, APIRouter, HTTPException, Query, Form, File, Response
+from fastapi.responses import FileResponse
 from houston_server_core import replays as core
 from houston_server_persistence.replay import Replay
 from pydantic import BaseModel
@@ -36,8 +37,9 @@ async def upload_replay(
 @replay_router.get("/", response_model=ReplayListResponse)
 async def list_replays(
     page: int | None = Query(None),
+    tags: list[str] | None = Query(None),
 ) -> ReplayListResponse:
-    replays, count = core.query_replays(page or 0)
+    replays, count = core.query_replays(page or 0, tags=tags)
     return ReplayListResponse(
         replays=replays,
         total=count
@@ -45,19 +47,21 @@ async def list_replays(
 
 
 @replay_router.get("/{replay_id}")
-async def get_replay_file(replay_id: str) -> Response:
+async def get_replay_file(replay_id: str) -> FileResponse:
     replay = core.get_replay(replay_id)
     if not replay:
         raise HTTPException(status_code=404, detail="Replay not found")
 
-    content = core.get_replay_object(replay)
-    if not content:
+    file_path = core.get_replay_object(replay)
+    if not file_path:
         raise HTTPException(status_code=404, detail="Replay not found")
 
-    return Response(
-        content=content,
+    filename = replay.filename or replay.path or f"{replay.replay_id}.txt"
+
+    return FileResponse(
+        path=file_path,
         media_type="application/octet-stream",
-        headers={"Content-Disposition": f"attachment; filename={replay.filename}"}
+        filename=filename
     )
 
 
