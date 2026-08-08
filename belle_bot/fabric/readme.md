@@ -14,13 +14,6 @@ To run the fabric without persistent logging:
 python3 belle_bot/infra/fabric/service.py
 ```
 
-### Running with Logging
-To enable logging of all messages to a SQLite database, set the `SAVE_REPLAY_ENABLED` environment variable to `true`:
-```bash
-SAVE_REPLAY_ENABLED=true python3 belle_bot/infra/fabric/service.py
-```
-Logs will be stored in 10-minute chunks in the `replays/` directory. Each chunk file is named with a UUIDv4.
-
 ## Usage
 
 ### Server
@@ -40,6 +33,3 @@ client = FabricClient()
 client.publish("my_stream", {"key": "value"})
 client.listen("another_stream", print)
 ```
-
-### Replaying Logs
-You can use the replayer tool in `belle_bot/infra/fabric/logs/replayer.py` to play back events stored in the `replays/` directory.

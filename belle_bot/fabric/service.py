@@ -1,9 +1,10 @@
+import os
 import traceback
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from belle_bot.infra.fabric import utils
+from belle_bot.fabric import utils
 
 app = FastAPI()
 
@@ -72,4 +73,10 @@ async def publish(stream: str, message: Request):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=utils.FABRIC_PORT, log_level="info")
+
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=utils.FABRIC_PORT,
+        log_level="info"
+    )
