@@ -22,6 +22,7 @@ app = FastAPI(
 
 
 app.include_router(routes.replay_router)
+app.include_router(routes.replayer_router)
 app.include_router(routes.models_router)
 # app.include_router(dataset_router)
 
