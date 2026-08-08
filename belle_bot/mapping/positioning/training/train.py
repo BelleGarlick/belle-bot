@@ -1,86 +1,45 @@
-from collections import deque
-from dataclasses import dataclass
+import math
 
 import numpy as np
 
 import torch
 import torch.nn.functional as F
+import mlflow
 
 from belle_bot.mapping.positioning.training.environment.multi_environment import MultiEnvironment
 from belle_bot.mapping.positioning.training.ml_model import PositionalModelling
 from belle_bot.mapping.positioning.training.models import GpsPoint, ModalityEnum, ImuData
 from belle_bot.mapping.positioning.training.normalisation import NormalisationBounds
+from belle_bot.mapping.positioning.training.utils import ReplayBuffer, TrainingSample
 
 # todo
 #  estimate variance when training
 #  drop sections randomly
 #  create normalisation from some initial steps
-#  mlflow
-#  roate the scene
+#  rotate the scene
 #  add camera
 #  bspline gps
 #  cli args to trigger training runs
 
 
 SEQUENCE_LENGTH = 100
-MINI_BATCH_SIZE = 256
+MINI_BATCH_SIZE = 512
 LOG_EVERY_N_STEPS = 5000
-SAVE_EVERY_N_STEPS = 10_000
+SAVE_EVERY_N_STEPS = 20_000
 MAX_SNAP_GPS_DISTANCE = 10
 INITIAL_TRAIN_SIZE = 500  # used to accumulate data for normalisation
-REPLAY_BUFFER_SIZE = MINI_BATCH_SIZE
-N_ENVIRONMENTS = 20
+REPLAY_BUFFER_SIZE = 5000
+N_ENVIRONMENTS = 4
 GAUSSIAN_NOISE_FACTOR = 0.1
-MAX_STEPS = 1000000
-LEARNING_RATE = 1e-3
-
-
-@dataclass
-class TrainingSample:
-    model_input: tuple[np.ndarray, np.ndarray]
-    target: np.ndarray
-
-
-class ReplayBuffer:
-    def __init__(self, maxlen: int):
-        self.buffer = deque[TrainingSample](maxlen=maxlen)
-        self.buffer_errors = deque[float](maxlen=maxlen)
-
-    def sample(self, n):
-        errors = softmax(np.array(self.buffer_errors))
-        return np.random.choice(len(self.buffer), n, p=errors)
-
-    def __getitem__(self, idxs):
-        return self.buffer[idxs]
-
-    def __setitem__(self, idxs, val):
-        for idx in idxs:
-            # anneal the value towards the true value
-            self.buffer_errors[idx] = self.buffer_errors[idx] * 0.5 + val * 0.5
-
-    def __len__(self):
-        return len(self.buffer)
-
-    def append(self, sample, error):
-        self.buffer.append(sample)
-        self.buffer_errors.append(error)
-
-    def mean_loss(self):
-        return np.mean(np.array(self.buffer_errors))
-
-    def clear(self):
-        self.buffer.clear()
-        self.buffer_errors.clear()
+MAX_STEPS = 100_000
+LEARNING_RATE = 1e-4
+EMBEDDING_SIZE = 256
+N_LAYERS = 2
 
 
 # instead, sample more items, but only train on the items where the error is larger. so it becomes a sort of heirstic search. doing so means we're not wasting cycles train pointeless data.
 
 device = torch.device('mps')
-
-def softmax(x):
-    """Compute softmax values for each sets of scores in x."""
-    e_x = np.exp(x - np.max(x))
-    return e_x / e_x.sum()
 
 
 # todo also make make it so that eventually we can make something more stochastic where frames are dropped / not perfectly discrete.
@@ -169,11 +128,16 @@ if __name__ == "__main__":
     # todo write a new way to create normalisation bounds. currently we have no way to fit the bounds
     bounds = NormalisationBounds().load("bounds.json")
 
-    model = PositionalModelling(10, 320).to(device)
+    model = PositionalModelling(10, EMBEDDING_SIZE, n_layers=N_LAYERS).to(device)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
 
-    env = MultiEnvironment(envs=N_ENVIRONMENTS, seq_len=SEQUENCE_LENGTH, random_subsample=True)
+    env = MultiEnvironment(
+        subset="training",
+        envs=N_ENVIRONMENTS,
+        seq_len=SEQUENCE_LENGTH,
+        random_subsample=True
+    )
 
     positions = env.reset()
     # Start sample from the environment
@@ -181,83 +145,112 @@ if __name__ == "__main__":
     episode_step_error = []
     episode_losses = []
 
-    model.eval()
-    for step in range(0, MAX_STEPS):
-        env_id = step % len(env)
-        percentage_complete = step / MAX_STEPS
-        percentage_remaining = 1 - percentage_complete
+    mlflow.set_experiment("positioning")
 
-        # Scale the learning rate with the percentage_complete
-        for g in optimizer.param_groups:
-            g['lr'] = LEARNING_RATE * percentage_remaining
+    with mlflow.start_run(run_name="Layers {}x{}, MB {} RBS {}".format(N_LAYERS, EMBEDDING_SIZE, MINI_BATCH_SIZE, REPLAY_BUFFER_SIZE)):
+        mlflow.log_params({
+            "sequence_length": SEQUENCE_LENGTH,
+            "mini_batch_size": MINI_BATCH_SIZE,
+            "max_steps": MAX_STEPS,
+            "learning_rate": LEARNING_RATE,
+            "replay_buffer_size": REPLAY_BUFFER_SIZE,
+            "n_environments": N_ENVIRONMENTS,
+            "gaussian_noise_factor": GAUSSIAN_NOISE_FACTOR,
+            "embedding_size": EMBEDDING_SIZE,
+            "n_layers": N_LAYERS,
+        })
 
-        state, position_change, termination = env.step(env_id, positions[env_id])
+        model.eval()
+        for step in range(0, MAX_STEPS):
+            env_id = step % len(env)
+            percentage_complete = step / MAX_STEPS
+            percentage_remaining = 1 - percentage_complete
 
-        # Process and create the model input to what the target change should be then predict the position for it
-        modality_data, modality_types = process_state(
-            state,
-            seq_length=SEQUENCE_LENGTH,
-            normalisation_bounds=bounds
-        )
-        with torch.no_grad():
-            predicted_position_change = model(
-                torch.tensor(modality_data).to(device=device, dtype=torch.float32),
-                torch.tensor(modality_types).to(device=device, dtype=torch.int64),
+            # Scale the learning rate with the percentage_complete
+            scale = 1 - math.pow(step / MAX_STEPS, 0.1)
+            for g in optimizer.param_groups:
+                g['lr'] = LEARNING_RATE * scale
+
+            state, position_change, termination = env.step(env_id, positions[env_id])
+
+            # Process and create the model input to what the target change should be then predict the position for it
+            modality_data, modality_types = process_state(
+                state,
+                seq_length=SEQUENCE_LENGTH,
+                normalisation_bounds=bounds
             )
-            predicted_position_change = predicted_position_change.detach().cpu().numpy()[0] * MAX_SNAP_GPS_DISTANCE
+            with torch.no_grad():
+                predicted_position_change = model(
+                    torch.tensor(modality_data).to(device=device, dtype=torch.float32),
+                    torch.tensor(modality_types).to(device=device, dtype=torch.int64),
+                )
+                predicted_position_change = predicted_position_change.detach().cpu().numpy()[0] * MAX_SNAP_GPS_DISTANCE
 
-        # To prevent errors exploding during instances where the drift increases, if the error is too high,
-        # then we apply the position fix and effectively reset the trajectory
-        # Doing so means we can keep training during this run
-        step_error = np.linalg.norm(position_change - predicted_position_change)
-        episode_step_error.append(step_error)
-        buffer.append(
-            TrainingSample(
-                model_input=(modality_data, modality_types),
-                target=position_change / MAX_SNAP_GPS_DISTANCE,
-            ),
-            F.huber_loss(
-                torch.tensor(predicted_position_change / MAX_SNAP_GPS_DISTANCE),
-                torch.tensor(position_change / MAX_SNAP_GPS_DISTANCE)
-            ).item()
-        )
+            # To prevent errors exploding during instances where the drift increases, if the error is too high,
+            # then we apply the position fix and effectively reset the trajectory
+            # Doing so means we can keep training during this run
+            step_error = np.linalg.norm(position_change - predicted_position_change)
+            episode_step_error.append(step_error)
+            buffer.append(
+                TrainingSample(
+                    model_input=(modality_data, modality_types),
+                    target=position_change / MAX_SNAP_GPS_DISTANCE,
+                ),
+                F.huber_loss(
+                    torch.tensor(predicted_position_change / MAX_SNAP_GPS_DISTANCE),
+                    torch.tensor(position_change / MAX_SNAP_GPS_DISTANCE)
+                ).item()
+            )
 
-        # Update the noise with some noise
-        position_noise_factor = percentage_remaining * GAUSSIAN_NOISE_FACTOR
-        position_noise = np.random.uniform(-1, 1, positions.shape) * position_noise_factor
-        positions[env_id] += (
-              position_change
-              if step_error > MAX_SNAP_GPS_DISTANCE else
-              predicted_position_change
-        ) + position_noise[env_id]
+            # Update the noise with some noise
+            position_noise_factor = percentage_remaining * GAUSSIAN_NOISE_FACTOR
+            position_noise = np.random.uniform(-1, 1, positions.shape) * position_noise_factor
+            positions[env_id] += (
+                  position_change
+                  if step_error > MAX_SNAP_GPS_DISTANCE else
+                  predicted_position_change
+            ) + position_noise[env_id]
 
-        if len(buffer) == INITIAL_TRAIN_SIZE:
-            train_normaliser(buffer)
+            if len(buffer) == INITIAL_TRAIN_SIZE:
+                train_normaliser(buffer)
 
-        if len(buffer) >= MINI_BATCH_SIZE:
-            mini_batch_loss = train_model(buffer)
-            # buffer.clear()
-            episode_losses.append(mini_batch_loss)
+            mini_batch_loss = None
+            if len(buffer) >= MINI_BATCH_SIZE:
+                mini_batch_loss = train_model(buffer)
+                episode_losses.append(mini_batch_loss)
 
-        # Reset any envs that terminated
-        if termination:
-            positions[env_id] = env.reset(env_id)
+            # Reset env if terminated
+            if termination:
+                positions = env.reset(env_id)
 
-        # Print a status update every x steps
-        if (step + 1) % LOG_EVERY_N_STEPS == 0:
-            print("\r{} Mean Step {:.5f} Loss {:.5f}".format(
-                step + 1,
-                np.mean(episode_step_error),
-                np.mean(episode_losses)
-            ))
-            episode_step_error = []
-            episode_losses = []
-            if (step + 1) % SAVE_EVERY_N_STEPS == 0:
-                torch.save(model.state_dict(), f"model-{step + 1}.pt")
-        elif step % 10 == 0:
-            print("\r{} Mean Step {:.5f} Loss {:.5f} {:.5f}".format(
-                step,
-                np.mean(episode_step_error),
-                np.mean(episode_losses),
-                buffer.mean_loss()
-            ), end="")
+            # Log metrics to mlflow
+            mlflow.log_metric("step_error", step_error, step=step)
+            mlflow.log_metric("lr", optimizer.param_groups[0]['lr'], step=step)
+            if mini_batch_loss is not None:
+                mlflow.log_metric("loss", mini_batch_loss, step=step)
+
+            # Print a status update every x steps
+            if (step + 1) % LOG_EVERY_N_STEPS == 0:
+                mean_step_err = np.mean(episode_step_error)
+                mean_loss = np.mean(episode_losses) if episode_losses else 0.0
+                print("\r{} Mean Step {:.5f} Loss {:.5f}".format(
+                    step + 1,
+                    mean_step_err,
+                    mean_loss
+                ))
+                mlflow.log_metric("mean_step_error_window", mean_step_err, step=step)
+                mlflow.log_metric("mean_loss_window", mean_loss, step=step)
+                episode_step_error = []
+                episode_losses = []
+                if (step + 1) % SAVE_EVERY_N_STEPS == 0:
+                    model_path = f"model-{step + 1}.pt"
+                    torch.save(model.state_dict(), model_path)
+                    # mlflow.log_artifact(model_path)
+
+            elif step % 10 == 0:
+                print("\r{} Mean Step {:.5f} Loss {:.5f} {:.5f}".format(
+                    step,
+                    np.mean(episode_step_error),
+                    np.mean(episode_losses) if episode_losses else 0.0,
+                    buffer.mean_loss()
+                ), end="")
