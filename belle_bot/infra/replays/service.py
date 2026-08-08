@@ -3,7 +3,7 @@ import json
 import threading
 from collections import deque
 
-from belle_bot.infra.fabric import FabricClient
+from belle_bot.fabric import FabricClient
 import os
 import queue
 import time
