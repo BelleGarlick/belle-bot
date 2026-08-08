@@ -4,16 +4,24 @@ import random
 
 import numpy as np
 
+import houston_api_client
+from houston_api_client.api.replays import get_replay_file
 from belle_bot.mapping.positioning.training.models import GpsPoint, ImuData
 
-REPLAY_FILE_PATH = "/Users/belle/Developer/belle-bot/replays"
-
-# todo create multi-agent environment which is just one container with N number of child environments within
+houston_client = houston_api_client.Client(base_url="http://localhost:8081/")
 
 
 def open_replay_file(replay_file):
-    with open(os.path.join(REPLAY_FILE_PATH, replay_file), "r") as f:
-        return f.readlines()
+    clean_replay_id = os.path.basename(replay_file)
+    if "." in clean_replay_id:
+        clean_replay_id = clean_replay_id.split(".")[0]
+
+    response = get_replay_file.sync_detailed(replay_id=clean_replay_id, client=houston_client)
+    if response.status_code == 200:
+        content_str = response.content.decode("utf-8")
+        return content_str.splitlines(keepends=True)
+    else:
+        raise Exception(f"Failed to fetch replay {clean_replay_id} from server: {response.status_code}")
 
 
 def _parse_events(replay_id: str):
@@ -96,7 +104,6 @@ def _get_initial_gps_pos(events):
     return None
 
 
-
 def calculate_catmull_rom_segment(p0, p1, p2, p3, t) -> np.ndarray:
     """Calculates points on a single Catmull-Rom segment between p1 and p2."""
     # T can be a fixed point or an array
@@ -118,14 +125,7 @@ class Episode:
         self.random_subsample = random_subsample
 
         self.events: list[tuple[ImuData | GpsPoint, GpsPoint, GpsPoint, GpsPoint, GpsPoint]] = []
-        self.current_step_idx = None
 
-    def reset(self) -> np.ndarray:
-        """
-
-        :return: Global position
-        """
-        # todo not sure how to handle this for future, but for now we will just return the first gps position in the list to get the position. this wont work for cold starts on the model itself
         events = _parse_events(self.replay_path)
         if self.random_subsample:
             events = _subsample_events(events)
@@ -133,6 +133,11 @@ class Episode:
 
         self.current_step_idx = 0
 
+    def current_position(self) -> np.ndarray:
+        """
+
+        :return: Global position
+        """
         return self.calculate_position(self.current_step_idx)
 
     def calculate_position(self, idx) -> np.ndarray:

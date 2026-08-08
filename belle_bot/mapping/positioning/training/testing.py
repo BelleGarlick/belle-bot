@@ -1,9 +1,9 @@
 import torch
 import numpy as np
 
-from belle_bot.mapping.positioning.training.train import MAX_SNAP_GPS_DISTANCE, SEQUENCE_LENGTH, process_state
-from belle_bot.mapping.positioning.training.environment import Environment
-from belle_bot.mapping.positioning.training.ml_model import UnifiedSequenceTransformer, PositionalModelling
+from belle_bot.mapping.positioning.training.environment.multi_environment import MultiEnvironment
+from belle_bot.mapping.positioning.training.train import MAX_SNAP_GPS_DISTANCE, process_state
+from belle_bot.mapping.positioning.training.ml_model import PositionalModelling
 from belle_bot.mapping.positioning.training.normalisation import NormalisationBounds
 
 # todo add heuristic to sampling states
@@ -17,17 +17,18 @@ if __name__ == "__main__":
     bounds = NormalisationBounds()\
         .load("bounds.json")
 
-    model = PositionalModelling(10, 320).to(device)
-    model.load_state_dict(torch.load("model-70000.pt"))
+    model = PositionalModelling(10, 256, n_layers=2).to(device)
+    model.load_state_dict(torch.load("model-100000.pt"))
 
-    env = Environment(random_subsample=False, seq_len=100)
+    # todo change to a mode where either acuumulate or capture events
+    env = MultiEnvironment('testing', seq_len=100, envs=1)
     # we should instead sample this like it's a rl environment so every x steps we train on some of the given steps
 
     with torch.no_grad():
-        for i in range(len(env)):
+        for i in range(len(env.replay_ids)):
             model.eval()
 
-            position = env.reset()
+            position = env.reset()[0]
             # Start sample from the environment
             episode_step_error = []
             episode_losses = []
@@ -38,7 +39,7 @@ if __name__ == "__main__":
             hc = None
             terminated = False
             while not terminated:
-                state, position_change, terminated = env.step(position)
+                state, position_change, terminated = env.step(0, position)
                 predicted_positions.append(position.copy())
                 true_positions.append((position + position_change).copy())
 

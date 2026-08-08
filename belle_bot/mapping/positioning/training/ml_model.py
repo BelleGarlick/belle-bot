@@ -8,7 +8,7 @@ device = torch.device('mps')
 
 
 class PositionalModelling(nn.Module):
-    def __init__(self, max_feature_dim, embed_dim):
+    def __init__(self, max_feature_dim, embed_dim, n_layers=2):
         super().__init__()
         # Distinct projection layers for each modality
         self.imu_proj = nn.Linear(max_feature_dim, embed_dim)
@@ -20,10 +20,10 @@ class PositionalModelling(nn.Module):
         self.lstm = nn.LSTM(
             embed_dim,
             embed_dim,
-            num_layers=2,
+            num_layers=n_layers,
             bias=True,
             batch_first=True,
-            dropout=0.05
+            dropout=0.01
         )
         self.out = nn.Linear(embed_dim, 3)
 

@@ -224,10 +224,11 @@ if __name__ == "__main__":
                 positions = env.reset(env_id)
 
             # Log metrics to mlflow
-            mlflow.log_metric("step_error", step_error, step=step)
-            mlflow.log_metric("lr", optimizer.param_groups[0]['lr'], step=step)
-            if mini_batch_loss is not None:
-                mlflow.log_metric("loss", mini_batch_loss, step=step)
+            if (step + 1) % 10:
+                mlflow.log_metric("step_error", step_error, step=step)
+                mlflow.log_metric("lr", optimizer.param_groups[0]['lr'], step=step)
+                if mini_batch_loss is not None:
+                    mlflow.log_metric("loss", mini_batch_loss, step=step)
 
             # Print a status update every x steps
             if (step + 1) % LOG_EVERY_N_STEPS == 0:
