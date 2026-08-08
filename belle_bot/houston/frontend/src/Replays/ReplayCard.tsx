@@ -30,7 +30,7 @@ export function ReplayCard({
                 fontSize: 14,
             }}
         >
-            <b style={{color: THEME}}>{replay.replay_id}</b>
+            <b style={{ color: THEME }}>{replay.replay_id}</b>
             <Tags tags={replay.tags ?? []} />
         </div>
     );

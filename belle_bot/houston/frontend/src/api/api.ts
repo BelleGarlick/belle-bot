@@ -71,6 +71,7 @@ export interface ReplayListResponse {
 
 export type ListReplaysParams = {
 page?: number | null;
+tags?: string[] | null;
 };
 
 export type ListModelsParams = {
@@ -101,7 +102,7 @@ export const getUploadReplayUrl = () => {
 
 
 
-  return `http://localhost:8080/replays/`
+  return `http://localhost:8081/replays/`
 }
 
 /**
@@ -167,6 +168,14 @@ export const getListReplaysUrl = (params?: ListReplaysParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
+    const explodeParameters = ["tags"];
+
+    if (Array.isArray(value) && explodeParameters.includes(key)) {
+      value.forEach((v) => {
+        normalizedParams.append(key, v === null ? 'null' : String(v));
+      });
+      return;
+    }
 
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : String(value))
@@ -175,7 +184,7 @@ export const getListReplaysUrl = (params?: ListReplaysParams,) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `http://localhost:8080/replays/?${stringifiedParams}` : `http://localhost:8080/replays/`
+  return stringifiedParams.length > 0 ? `http://localhost:8081/replays/?${stringifiedParams}` : `http://localhost:8081/replays/`
 }
 
 /**
@@ -225,7 +234,7 @@ export const getGetReplayFileUrl = (replayId: string,) => {
 
 
 
-  return `http://localhost:8080/replays/${replayId}`
+  return `http://localhost:8081/replays/${replayId}`
 }
 
 /**
@@ -275,7 +284,7 @@ export const getUpdateReplayUrl = (replayId: string,) => {
 
 
 
-  return `http://localhost:8080/replays/${replayId}`
+  return `http://localhost:8081/replays/${replayId}`
 }
 
 /**
@@ -326,7 +335,7 @@ export const getGetReplayInfoUrl = (replayId: string,) => {
 
 
 
-  return `http://localhost:8080/replays/${replayId}/info`
+  return `http://localhost:8081/replays/${replayId}/info`
 }
 
 /**
@@ -376,7 +385,7 @@ export const getUploadModelUrl = () => {
 
 
 
-  return `http://localhost:8080/models/`
+  return `http://localhost:8081/models/`
 }
 
 /**
@@ -441,7 +450,7 @@ export const getListModelsUrl = (params?: ListModelsParams,) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `http://localhost:8080/models/?${stringifiedParams}` : `http://localhost:8080/models/`
+  return stringifiedParams.length > 0 ? `http://localhost:8081/models/?${stringifiedParams}` : `http://localhost:8081/models/`
 }
 
 /**
@@ -491,7 +500,7 @@ export const getGetModelFileUrl = (modelId: string,) => {
 
 
 
-  return `http://localhost:8080/models/${modelId}`
+  return `http://localhost:8081/models/${modelId}`
 }
 
 /**
@@ -541,7 +550,7 @@ export const getGetModelInfoUrl = (modelId: string,) => {
 
 
 
-  return `http://localhost:8080/models/${modelId}/info`
+  return `http://localhost:8081/models/${modelId}/info`
 }
 
 /**
