@@ -60,13 +60,12 @@ class LogIterator:
     def __init__(self):
         self.idx = 0
         self.replay_idx = 0
-        self.replay: ReplayLoader | None = None
+        self.replay: ReplayLoader = ReplayLoader(REPLAY_IDS[0])
         self.next_replay: ReplayLoader | None = None
 
     def __iter__(self):
         self.idx = 0
 
-        self.replay = ReplayLoader(REPLAY_IDS[0])
         self.replay.run()
 
         return self
@@ -76,10 +75,8 @@ class LogIterator:
         if self.idx >= len(self.replay.events):
             self.idx = 0
             if self.next_replay is not None:
-                self.replay = self.next_replay
-                self.replay.start()
+                self.replay, self.next_replay = self.next_replay, None
                 self.replay.join()
-                self.next_replay = None
 
         # Load and then increment the counter
         item = self.replay.events[self.idx]
@@ -88,17 +85,20 @@ class LogIterator:
         # Start loading the next replay if needed
         if self.next_replay is None and len(REPLAY_IDS) > 1:
             self.replay_idx += 1
-            self.next_replay = ReplayLoader(REPLAY_IDS[self.replay_idx % len(REPLAY_IDS)])
+            next_replay = ReplayLoader(REPLAY_IDS[self.replay_idx % len(REPLAY_IDS)])
+            next_replay.start()
+            self.next_replay = next_replay
 
-        return item
+        return self.replay.replay_id, self.idx / len(self.replay.events), item
 
 
 async def main():
     last_item_time = None
+    last_update_time: float | None = None
 
     iterator = LogIterator()
 
-    for item in iterator:
+    for replay_id, progress, item in iterator:
         current_item_time = float(item["timestamp"])
 
         if last_item_time is not None:
@@ -110,6 +110,13 @@ async def main():
 
         # Run this async
         asyncio.create_task(CLIENT.publish_async(item["stream"], item['value']))
+
+        if last_update_time is None or current_item_time - last_update_time > 1:
+            asyncio.create_task(CLIENT.publish_async("replayer", {
+                "replay_id": item["replay_id"],
+                "progress": progress
+            }))
+
 
     # Wait for all background tasks to finish
     tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
