@@ -1,60 +1,87 @@
 import numpy as np
+from attr import dataclass
 from typing_extensions import Literal
 
-import houston_api_client
-from belle_bot.mapping.positioning.training.environment import Environment
-from houston_api_client.api.replays import list_replays
+from belle_bot.mapping.positioning.training.environment import Environment, Episode
+from belle_bot.mapping.positioning.training.environment.env import Frame
+from belle_bot.mapping.positioning.training.models import GpsPoint, ImuData
+from belle_bot.houston.client.py import replays
 
 
-houston_client = houston_api_client.Client(base_url="http://localhost:8081/")
+def load_replay_ids(subset: Literal['training', 'testing'] | None) -> list[str]:
+    filter = ["dataset/mapping/position"]
+    if subset:
+        filter += [subset]
 
-def load_replay_ids(subset: Literal['training', 'testing']) -> list[int]:
-    # Load by tag
-    response = list_replays.sync(client=houston_client, page=0, tags=[subset, "dataset/mapping/position"])
-    return [x.replay_id for x in response.replays]
+    replay_ids = replays.query_replays(
+        page=0,
+        tags=filter
+    )['replays']
 
+    return sorted([x["replay_id"] for x in replay_ids])
+
+
+@dataclass
+class ResetData:
+    initial_states: list[Frame]
+    replay_ids: list[str]
 
 
 class MultiEnvironment:
 
-    def __init__(self, subset: Literal['training', 'testing'], seq_len, envs=8, random_subsample=False):
-        self.replay_ids = load_replay_ids(subset=subset)
+    def __init__(self, subset: Literal['training', 'testing'] | None, seq_len, envs=8, random_subsample=False):
+        self.replay_ids: list[str] = load_replay_ids(subset=subset)
 
         self._new_replay_idx = -1
         self.env_count = envs
         self.seq_len = seq_len
         self.random_subsample = random_subsample
 
-        self.envs: list[Environment] = []
-        self.__positions: list[np.ndarray] = []
+        self.environments: list[Environment] = []
 
     def __len__(self):
-        return len(self.envs)
+        return len(self.environments)
 
-    def __get_new_replay_idx(self):
+    def __get_new_replay_id(self):
         self._new_replay_idx += 1
-        return self._new_replay_idx % len(self.replay_ids)
+        replay_id = self._new_replay_idx % len(self.replay_ids)
+        return self.replay_ids[replay_id]
 
-    def reset(self, idx=None) -> np.ndarray:
+    def reset(self, idx: int | None=None) -> ResetData:
         if idx is None:
-            if self.envs:
-                self.envs.clear()
-                self.__positions.clear()
+            if self.environments:
+                self.environments.clear()
 
             # If no idx, then reset all environments
+            replay_ids = []
             for idx in range(self.env_count):
-                replay_id = self.replay_ids[self.__get_new_replay_idx()]
-                env = Environment(replay_id, self.seq_len, self.random_subsample)
-                self.envs.append(env)
-                self.__positions.append(env.current_episode.current_position())
+                replay_id = self.__get_new_replay_id()
+                replay_ids.append(replay_id)
+                self.environments.append(
+                    Environment(
+                        Episode(replay_id, self.random_subsample),
+                        self.seq_len
+                    )
+                )
 
-            return np.array(self.__positions)
+            return ResetData(replay_ids=replay_ids, initial_states=[x.reset() for x in self.environments])
 
         # Create a new episode and reset it to get the initial position
-        replay_id = self.replay_ids[self.__get_new_replay_idx()]
-        self.envs[idx] = Environment(replay_id, self.seq_len, self.random_subsample)
-        self.__positions[idx] = self.envs[idx].current_episode.current_position()
-        return np.array(self.__positions)
+        replay_id = self.__get_new_replay_id()
+        self.environments[idx] = Environment(
+            Episode(replay_id, self.random_subsample),
+            self.seq_len
+        )
 
-    def step(self, idx, position: np.ndarray):
-        return self.envs[idx].step(position)
+        return ResetData(
+            replay_ids=[replay_id],
+            initial_states=[self.environments[idx].reset()]
+        )
+
+    def step(
+            self,
+            idx: int,
+            action,
+            max_error: float | None = None
+    ) -> tuple[ImuData | GpsPoint, np.ndarray, bool]:
+        return self.environments[idx].step(action, max_error)

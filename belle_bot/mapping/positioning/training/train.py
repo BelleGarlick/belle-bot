@@ -6,6 +6,7 @@ import torch
 import torch.nn.functional as F
 import mlflow
 
+from belle_bot.mapping.positioning.training.environment.env import Frame
 from belle_bot.mapping.positioning.training.environment.multi_environment import MultiEnvironment
 from belle_bot.mapping.positioning.training.ml_model import PositionalModelling
 from belle_bot.mapping.positioning.training.models import GpsPoint, ModalityEnum, ImuData
@@ -20,21 +21,24 @@ from belle_bot.mapping.positioning.training.utils import ReplayBuffer, TrainingS
 #  add camera
 #  bspline gps
 #  cli args to trigger training runs
+#  add testing set here
 
 
 SEQUENCE_LENGTH = 100
-MINI_BATCH_SIZE = 512
+MINI_BATCH_SIZE = 500
+TRAIN_EVERY_N_STEPS = 50
 LOG_EVERY_N_STEPS = 5000
-SAVE_EVERY_N_STEPS = 20_000
+SAVE_EVERY_N_STEPS = 50_000
 MAX_SNAP_GPS_DISTANCE = 10
 INITIAL_TRAIN_SIZE = 500  # used to accumulate data for normalisation
-REPLAY_BUFFER_SIZE = 5000
-N_ENVIRONMENTS = 4
-GAUSSIAN_NOISE_FACTOR = 0.1
+REPLAY_BUFFER_SIZE = 5_000
+N_ENVIRONMENTS = 20
+GAUSSIAN_NOISE_FACTOR = 0.0
 MAX_STEPS = 100_000
 LEARNING_RATE = 1e-4
-EMBEDDING_SIZE = 256
+EMBEDDING_SIZE = 512
 N_LAYERS = 2
+LR_GAMMA = 0.2
 
 
 # instead, sample more items, but only train on the items where the error is larger. so it becomes a sort of heirstic search. doing so means we're not wasting cycles train pointeless data.
@@ -48,30 +52,33 @@ device = torch.device('mps')
 
 
 # realistically, i think the best thing to do is to jus use frames which embed the diff item
-def process_state(frames: list[ImuData | GpsPoint], seq_length, normalisation_bounds: NormalisationBounds):
+def process_state(frames: list[Frame], seq_length, normalisation_bounds: NormalisationBounds):
     modality_types = [ModalityEnum.PAD] * seq_length
-    modality_data = [[0] * 10 for _ in range(seq_length)]
+    modality_data = [[0] * 13 for _ in range(seq_length)]
 
-    for item in frames:
-        if isinstance(item, ImuData):
+    # TODO change time step to be relative here
+
+    for i, item in enumerate(frames):
+        if isinstance(item.frame, ImuData):
             # Update the modality data
             # todo change the angle to cos / sin so that it's measured a lil better at the point from -180 to 180
             modality_types.append(ModalityEnum.IMU)
             modality_data.append(np.hstack((
-                item.acc / normalisation_bounds['imu.acc'],
-                item.gyro / normalisation_bounds['imu.gyro'],
-                item.angle / normalisation_bounds['imu.angle'],
-                [item.timestamp]
+                item.position_change,
+                item.frame.acc / normalisation_bounds['imu.acc'],
+                item.frame.gyro / normalisation_bounds['imu.gyro'],
+                item.frame.angle / normalisation_bounds['imu.angle'],
+                [item.time_delta]
             )))
 
-        elif isinstance(item, GpsPoint):
+        elif isinstance(item.frame, GpsPoint):
             # Update the modality data
             modality_types.append(ModalityEnum.GPS)
-            modality_data.append(np.array([
-                item.x / normalisation_bounds["gps.x"],
-                item.y / normalisation_bounds["gps.y"],
-                item.altitude / normalisation_bounds["gps.alt"],
-            ] + [0] * 6 + [item.timestamp]))  # padded the item so everything is same size
+            modality_data.append(np.array(item.position_change.tolist() + [
+                item.frame.x / normalisation_bounds["gps.x"],
+                item.frame.y / normalisation_bounds["gps.y"],
+                item.frame.altitude / normalisation_bounds["gps.alt"],
+            ] + [0] * 6 + [item.time_delta]))  # padded the item so everything is same size
 
         else:
             # split up camera into multiple tokens
@@ -128,7 +135,7 @@ if __name__ == "__main__":
     # todo write a new way to create normalisation bounds. currently we have no way to fit the bounds
     bounds = NormalisationBounds().load("bounds.json")
 
-    model = PositionalModelling(10, EMBEDDING_SIZE, n_layers=N_LAYERS).to(device)
+    model = PositionalModelling(13, EMBEDDING_SIZE, n_layers=N_LAYERS).to(device)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
 
@@ -139,7 +146,7 @@ if __name__ == "__main__":
         random_subsample=True
     )
 
-    positions = env.reset()
+    states: list[Frame] = env.reset().initial_states
     # Start sample from the environment
     buffer = ReplayBuffer(REPLAY_BUFFER_SIZE)
     episode_step_error = []
@@ -153,32 +160,29 @@ if __name__ == "__main__":
             "mini_batch_size": MINI_BATCH_SIZE,
             "max_steps": MAX_STEPS,
             "learning_rate": LEARNING_RATE,
+            "learning_rate_gamma": LR_GAMMA,
             "replay_buffer_size": REPLAY_BUFFER_SIZE,
             "n_environments": N_ENVIRONMENTS,
             "gaussian_noise_factor": GAUSSIAN_NOISE_FACTOR,
             "embedding_size": EMBEDDING_SIZE,
             "n_layers": N_LAYERS,
+            "train_every_n_steps": TRAIN_EVERY_N_STEPS,
         })
 
         model.eval()
         for step in range(0, MAX_STEPS):
-            env_id = step % len(env)
+            env_id: int = step % len(env)
+
             percentage_complete = step / MAX_STEPS
             percentage_remaining = 1 - percentage_complete
 
             # Scale the learning rate with the percentage_complete
-            scale = 1 - math.pow(step / MAX_STEPS, 0.1)
+            scale = 1 - math.pow(step / MAX_STEPS, LR_GAMMA)
             for g in optimizer.param_groups:
                 g['lr'] = LEARNING_RATE * scale
 
-            state, position_change, termination = env.step(env_id, positions[env_id])
-
             # Process and create the model input to what the target change should be then predict the position for it
-            modality_data, modality_types = process_state(
-                state,
-                seq_length=SEQUENCE_LENGTH,
-                normalisation_bounds=bounds
-            )
+            modality_data, modality_types = process_state(states[env_id], SEQUENCE_LENGTH, bounds)
             with torch.no_grad():
                 predicted_position_change = model(
                     torch.tensor(modality_data).to(device=device, dtype=torch.float32),
@@ -186,42 +190,42 @@ if __name__ == "__main__":
                 )
                 predicted_position_change = predicted_position_change.detach().cpu().numpy()[0] * MAX_SNAP_GPS_DISTANCE
 
-            # To prevent errors exploding during instances where the drift increases, if the error is too high,
-            # then we apply the position fix and effectively reset the trajectory
-            # Doing so means we can keep training during this run
-            step_error = np.linalg.norm(position_change - predicted_position_change)
+            # Calculate noise which is added to the step
+            position_noise_factor = percentage_remaining * GAUSSIAN_NOISE_FACTOR
+            position_noise = np.random.uniform(-1, 1, predicted_position_change.shape) * position_noise_factor
+
+            # Perform the step change
+            state, true_position_change, terminated = env.step(
+                env_id,
+                predicted_position_change + position_noise,
+                max_error=10
+            )
+            states[env_id] = state
+
+            step_error = np.linalg.norm(true_position_change - predicted_position_change)
             episode_step_error.append(step_error)
             buffer.append(
                 TrainingSample(
                     model_input=(modality_data, modality_types),
-                    target=position_change / MAX_SNAP_GPS_DISTANCE,
+                    target=true_position_change / MAX_SNAP_GPS_DISTANCE
                 ),
                 F.huber_loss(
                     torch.tensor(predicted_position_change / MAX_SNAP_GPS_DISTANCE),
-                    torch.tensor(position_change / MAX_SNAP_GPS_DISTANCE)
+                    torch.tensor(true_position_change / MAX_SNAP_GPS_DISTANCE)
                 ).item()
             )
-
-            # Update the noise with some noise
-            position_noise_factor = percentage_remaining * GAUSSIAN_NOISE_FACTOR
-            position_noise = np.random.uniform(-1, 1, positions.shape) * position_noise_factor
-            positions[env_id] += (
-                  position_change
-                  if step_error > MAX_SNAP_GPS_DISTANCE else
-                  predicted_position_change
-            ) + position_noise[env_id]
 
             if len(buffer) == INITIAL_TRAIN_SIZE:
                 train_normaliser(buffer)
 
             mini_batch_loss = None
-            if len(buffer) >= MINI_BATCH_SIZE:
+            if len(buffer) >= MINI_BATCH_SIZE and (step + 1) % TRAIN_EVERY_N_STEPS == 0:
                 mini_batch_loss = train_model(buffer)
                 episode_losses.append(mini_batch_loss)
 
             # Reset env if terminated
-            if termination:
-                positions = env.reset(env_id)
+            if terminated:
+                states[env_id] = env.reset(env_id).initial_states[0]
 
             # Log metrics to mlflow
             if (step + 1) % 10:

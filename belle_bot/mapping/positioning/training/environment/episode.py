@@ -1,34 +1,20 @@
 import json
-import os
 import random
 
 import numpy as np
 
-import houston_api_client
-from houston_api_client.api.replays import get_replay_file
 from belle_bot.mapping.positioning.training.models import GpsPoint, ImuData
-
-houston_client = houston_api_client.Client(base_url="http://localhost:8081/")
-
-
-def open_replay_file(replay_file):
-    clean_replay_id = os.path.basename(replay_file)
-    if "." in clean_replay_id:
-        clean_replay_id = clean_replay_id.split(".")[0]
-
-    response = get_replay_file.sync_detailed(replay_id=clean_replay_id, client=houston_client)
-    if response.status_code == 200:
-        content_str = response.content.decode("utf-8")
-        return content_str.splitlines(keepends=True)
-    else:
-        raise Exception(f"Failed to fetch replay {clean_replay_id} from server: {response.status_code}")
+from belle_bot.houston.client.py import replays
 
 
 def _parse_events(replay_id: str):
-    lines = open_replay_file(replay_id)
+    lines = replays.get_replay_file(replay_id).split("\n")
 
     events = []
     for i, line in enumerate(lines):
+        if "," not in line:
+            continue
+
         split_tokens = line.split(",")
         stream = split_tokens[0]
         timestamp = float(split_tokens[1])
@@ -133,6 +119,13 @@ class Episode:
 
         self.current_step_idx = 0
 
+    def current_timestep(self) -> float:
+        """
+
+        :return: Global position
+        """
+        return self.events[self.current_step_idx][0].timestamp
+
     def current_position(self) -> np.ndarray:
         """
 
@@ -170,17 +163,21 @@ class Episode:
             interpolated_t,
         ])
 
+    def get_current_frame(self):
+        return self.events[self.current_step_idx][0]
 
-    def step(self):
+    def step(self) -> tuple[ImuData | GpsPoint, np.ndarray, bool]:
         """
         Move to the next step
 
-        :return: Current step
+        :return: Current event, resultant position, and whether terminated
         """
-        self.current_step_idx += 1
-
-        return (
+        data = (
             self.events[self.current_step_idx][0],
             self.calculate_position(self.current_step_idx),
-            self.current_step_idx == len(self.events) - 1  # check if terminated
+            self.current_step_idx >= len(self.events) - 2
         )
+
+        self.current_step_idx += 1
+
+        return data
