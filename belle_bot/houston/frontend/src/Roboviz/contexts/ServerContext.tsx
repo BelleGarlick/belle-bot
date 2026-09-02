@@ -2,6 +2,8 @@ import {
     createContext,
     useContext,
     useState,
+    useRef,
+    useEffect,
     type PropsWithChildren,
 } from "react";
 import { v4 } from "uuid";
@@ -18,53 +20,73 @@ interface FabricContextI {
 const FabricContext = createContext<FabricContextI | null>(null);
 
 export function FabricContextProvider({ children }: PropsWithChildren) {
-    const [domain, setDomain] = useState<string | undefined>("localhost:59991");
+    const [domain, setDomain] = useState<string | undefined>("localhost:15401");
 
-    const webSockets: { [key: string]: WebSocket } = {};
-    const callbacks: { [key: string]: { [id: string]: StreamCallback } } = {};
+    const webSockets = useRef<{ [key: string]: WebSocket }>({});
+    const callbacks = useRef<{
+        [key: string]: { [id: string]: StreamCallback };
+    }>({});
 
     const listen = (stream: string, callback: StreamCallback) => {
         if (!domain) throw "No domain set.";
 
-        if (!Object.hasOwn(webSockets, stream)) {
+        if (!Object.hasOwn(webSockets.current, stream)) {
             const path = "ws://" + domain + "/listen/" + stream;
             const socket = new WebSocket(path);
 
             socket.onmessage = (event: MessageEvent) => {
                 const data = JSON.parse(event.data);
-                Object.values(callbacks[stream]).forEach((x) => x(data));
+                if (callbacks.current[stream]) {
+                    Object.values(callbacks.current[stream]).forEach((x) =>
+                        x(data),
+                    );
+                }
             };
 
             socket.onerror = (x) => {
-                console.log(x);
+                console.error(`WebSocket error on stream ${stream}:`, x);
             };
-            socket.onopen = (x) => {
-                console.log(x);
+            socket.onopen = () => {
+                console.log(`WebSocket opened for stream ${stream} on ${domain}`);
             };
             socket.onclose = (x) => {
-                console.log(x);
+                console.log(`WebSocket closed for stream ${stream}:`, x);
+                delete webSockets.current[stream];
             };
 
-            // todo handle socket events
-            // todo handle errors if exists
-            webSockets[stream] = socket;
+            webSockets.current[stream] = socket;
         }
 
         const newStreamId = v4();
-        if (!Object.hasOwn(callbacks, stream)) callbacks[stream] = {};
-        callbacks[stream][newStreamId] = callback;
+        if (!Object.hasOwn(callbacks.current, stream))
+            callbacks.current[stream] = {};
+        callbacks.current[stream][newStreamId] = callback;
 
         return newStreamId;
     };
 
     const stopListening = (stream: string, listenerId: string) => {
-        if (!Object.hasOwn(callbacks, stream)) return;
-        if (!Object.hasOwn(callbacks[stream], listenerId)) return;
+        if (!Object.hasOwn(callbacks.current, stream)) return;
+        if (!Object.hasOwn(callbacks.current[stream], listenerId)) return;
 
-        delete callbacks[stream][listenerId];
+        delete callbacks.current[stream][listenerId];
+
+        if (Object.keys(callbacks.current[stream]).length === 0) {
+            if (webSockets.current[stream]) {
+                webSockets.current[stream].close();
+                delete webSockets.current[stream];
+            }
+        }
     };
 
-    // todo create timer to kepe the sockets alive
+    useEffect(() => {
+        // When domain changes, close all existing sockets so they can be re-opened on the new domain
+        const sockets = webSockets.current;
+        return () => {
+            Object.values(sockets).forEach((s) => s.close());
+            webSockets.current = {};
+        };
+    }, [domain]);
 
     return (
         <FabricContext.Provider

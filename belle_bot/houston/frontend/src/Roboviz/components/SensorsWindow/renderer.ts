@@ -35,7 +35,7 @@ export function renderCameraImage(
         ctx.drawImage(image, offsetX, offsetY, drawWidth, drawHeight);
     };
 
-    image.src = `data:image/jpg;base64,${data[selectedCamera]}`;
+    image.src = `data:image/jpeg;base64,${data[selectedCamera]}`;
 }
 
 export function renderOdometryData(

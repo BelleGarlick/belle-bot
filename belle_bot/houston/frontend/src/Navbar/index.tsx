@@ -11,6 +11,7 @@ export enum Page {
     MODELS = 1,
     DATASETS = 2,
     ROBOVIZ = 3,
+    REPLAYERS = 4,
 }
 
 const pages: { page: Page; text: string }[] = [
@@ -18,6 +19,7 @@ const pages: { page: Page; text: string }[] = [
     { page: Page.MODELS, text: "models" },
     { page: Page.DATASETS, text: "datasets" },
     { page: Page.ROBOVIZ, text: "roboviz" },
+    { page: Page.REPLAYERS, text: "replayers" },
 ];
 
 const NavBarLink = styled.div<{ theme?: string }>`
@@ -56,6 +58,8 @@ export function NavBar() {
         page = Page.DATASETS;
     } else if (location.pathname.startsWith("/replays")) {
         page = Page.REPLAYS;
+    } else if (location.pathname.startsWith("/replayers")) {
+        page = Page.REPLAYERS;
     }
 
     const handleNavigate = (targetPage: Page) => {
@@ -67,6 +71,8 @@ export function NavBar() {
             navigate("/models");
         } else if (targetPage === Page.DATASETS) {
             navigate("/datasets");
+        } else if (targetPage === Page.REPLAYERS) {
+            navigate("/replayers");
         }
     };
 

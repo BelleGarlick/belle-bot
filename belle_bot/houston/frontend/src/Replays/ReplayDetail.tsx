@@ -1,6 +1,8 @@
-import { type Replay, updateReplay } from "../api/api.ts";
+import { type Replay, updateReplay, createReplayer } from "../api/api.ts";
 import { type PropsWithChildren, useEffect, useState } from "react";
 import { THEME } from "../Roboviz/utils.tsx";
+import { v4 } from "uuid";
+import { Button } from "../components/inputs";
 
 function Labelled({ label, children }: { label: string } & PropsWithChildren) {
     return (
@@ -85,6 +87,16 @@ export function ReplayDetail({
         setTags([...sharedTags]);
     }, [replays]);
 
+    const runReplays = () => {
+        createReplayer({
+            name: v4(),
+            replay_ids: replays.map((replay) => replay.replay_id),
+        }).then((response) => {
+            console.log(response);
+            window.location.href = "/replayers";
+        });
+    };
+
     const handleAddTag = async () => {
         const tagToAdd = newTag.trim();
         if (!tagToAdd) return;
@@ -98,9 +110,7 @@ export function ReplayDetail({
                         ...r,
                         tags: newTags,
                     });
-                    if (res.status === 200) {
-                        return res.data;
-                    }
+                    return res;
                 }
                 return r;
             }),
@@ -122,9 +132,7 @@ export function ReplayDetail({
                         ...r,
                         tags: newTags,
                     });
-                    if (res.status === 200) {
-                        return res.data;
-                    }
+                    return res;
                 }
                 return r;
             }),
@@ -202,27 +210,14 @@ export function ReplayDetail({
                                     borderRadius: 8,
                                     padding: "6px 12px",
                                     color: THEME,
+                                    backgroundColor: "black",
                                     outline: "none",
                                     fontFamily: "monospace",
                                     fontSize: 14,
                                     flex: 1,
                                 }}
                             />
-                            <button
-                                onClick={handleAddTag}
-                                style={{
-                                    cursor: "pointer",
-                                    padding: "6px 16px",
-                                    borderRadius: 8,
-                                    border: `2px solid ${THEME}`,
-                                    backgroundColor: THEME,
-                                    color: "white",
-                                    fontWeight: "bold",
-                                    fontSize: 14,
-                                }}
-                            >
-                                Add Tag
-                            </button>
+                            <Button onClick={handleAddTag}>Add Tag</Button>
                         </div>
                         <div
                             style={{
@@ -273,6 +268,10 @@ export function ReplayDetail({
                             )}
                         </div>
                     </div>
+                </Labelled>
+
+                <Labelled label="Replay">
+                    <Button onClick={runReplays}>Run Replayer</Button>
                 </Labelled>
             </div>
         </>

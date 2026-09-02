@@ -4,6 +4,7 @@
  * Houston API
  * OpenAPI spec version: 0.1.0
  */
+import customInstance from './mutator';
 export interface BodyUploadModel {
   file: Blob;
   name: string;
@@ -69,6 +70,23 @@ export interface ReplayListResponse {
   total: number;
 }
 
+export interface ReplayerResponse {
+  replayer_id: string;
+  name: string;
+  port: number;
+  replay_ids: string[];
+  start_time: number;
+  fabric_pid: number;
+  replay_pid: number;
+}
+
+export interface StartReplayerRequest {
+  /** Logical name for this replayer run */
+  name: string;
+  /** List of replay IDs to process */
+  replay_ids: string[];
+}
+
 export type ListReplaysParams = {
 page?: number | null;
 tags?: string[] | null;
@@ -102,13 +120,13 @@ export const getUploadReplayUrl = () => {
 
 
 
-  return `http://localhost:8081/replays/`
+  return `http://localhost:8085/replays/`
 }
 
 /**
  * @summary Upload Replay
  */
-export const uploadReplay = async (bodyUploadReplay: BodyUploadReplay, options?: RequestInit): Promise<uploadReplayResponse> => {
+export const uploadReplay = async (bodyUploadReplay: BodyUploadReplay, options?: RequestInit): Promise<Replay> => {
     const formData = new FormData();
 formData.append(`file`, bodyUploadReplay.file);
 if(bodyUploadReplay.filename !== undefined && bodyUploadReplay.filename !== null) {
@@ -127,20 +145,14 @@ if(bodyUploadReplay.permanent !== undefined) {
  formData.append(`permanent`, bodyUploadReplay.permanent.toString())
  }
 
-  const res = await fetch(getUploadReplayUrl(),
+  return customInstance<Replay>(getUploadReplayUrl(),
   {
     ...options,
     method: 'POST'
     ,
     body: formData
   }
-)
-
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: uploadReplayResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as uploadReplayResponse
+);
 }
 
 
@@ -184,28 +196,22 @@ export const getListReplaysUrl = (params?: ListReplaysParams,) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `http://localhost:8081/replays/?${stringifiedParams}` : `http://localhost:8081/replays/`
+  return stringifiedParams.length > 0 ? `http://localhost:8085/replays/?${stringifiedParams}` : `http://localhost:8085/replays/`
 }
 
 /**
  * @summary List Replays
  */
-export const listReplays = async (params?: ListReplaysParams, options?: RequestInit): Promise<listReplaysResponse> => {
+export const listReplays = async (params?: ListReplaysParams, options?: RequestInit): Promise<ReplayListResponse> => {
 
-  const res = await fetch(getListReplaysUrl(params),
+  return customInstance<ReplayListResponse>(getListReplaysUrl(params),
   {
     ...options,
     method: 'GET'
 
 
   }
-)
-
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: listReplaysResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as listReplaysResponse
+);
 }
 
 
@@ -234,28 +240,22 @@ export const getGetReplayFileUrl = (replayId: string,) => {
 
 
 
-  return `http://localhost:8081/replays/${replayId}`
+  return `http://localhost:8085/replays/${replayId}`
 }
 
 /**
  * @summary Get Replay File
  */
-export const getReplayFile = async (replayId: string, options?: RequestInit): Promise<getReplayFileResponse> => {
+export const getReplayFile = async (replayId: string, options?: RequestInit): Promise<unknown> => {
 
-  const res = await fetch(getGetReplayFileUrl(replayId),
+  return customInstance<unknown>(getGetReplayFileUrl(replayId),
   {
     ...options,
     method: 'GET'
 
 
   }
-)
-
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: getReplayFileResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getReplayFileResponse
+);
 }
 
 
@@ -284,29 +284,23 @@ export const getUpdateReplayUrl = (replayId: string,) => {
 
 
 
-  return `http://localhost:8081/replays/${replayId}`
+  return `http://localhost:8085/replays/${replayId}`
 }
 
 /**
  * @summary Update Replay
  */
 export const updateReplay = async (replayId: string,
-    replay: Replay, options?: RequestInit): Promise<updateReplayResponse> => {
+    replay: Replay, options?: RequestInit): Promise<Replay> => {
 
-  const res = await fetch(getUpdateReplayUrl(replayId),
+  return customInstance<Replay>(getUpdateReplayUrl(replayId),
   {
     ...options,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(replay)
   }
-)
-
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: updateReplayResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as updateReplayResponse
+);
 }
 
 
@@ -335,28 +329,150 @@ export const getGetReplayInfoUrl = (replayId: string,) => {
 
 
 
-  return `http://localhost:8081/replays/${replayId}/info`
+  return `http://localhost:8085/replays/${replayId}/info`
 }
 
 /**
  * @summary Get Replay Info
  */
-export const getReplayInfo = async (replayId: string, options?: RequestInit): Promise<getReplayInfoResponse> => {
+export const getReplayInfo = async (replayId: string, options?: RequestInit): Promise<Replay> => {
 
-  const res = await fetch(getGetReplayInfoUrl(replayId),
+  return customInstance<Replay>(getGetReplayInfoUrl(replayId),
   {
     ...options,
     method: 'GET'
 
 
   }
-)
+);
+}
 
 
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: getReplayInfoResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getReplayInfoResponse
+export type getReplayersResponse200 = {
+  data: ReplayerResponse[]
+  status: 200
+}
+
+export type getReplayersResponseSuccess = (getReplayersResponse200) & {
+  headers: Headers;
+};
+;
+
+export type getReplayersResponse = (getReplayersResponseSuccess)
+
+export const getGetReplayersUrl = () => {
+
+
+
+
+  return `http://localhost:8085/replayer`
+}
+
+/**
+ * Retrieve all running replayer metadata from the pid storage.
+ * @summary List all active replayers
+ */
+export const getReplayers = async ( options?: RequestInit): Promise<ReplayerResponse[]> => {
+
+  return customInstance<ReplayerResponse[]>(getGetReplayersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);
+}
+
+
+
+export type createReplayerResponse201 = {
+  data: ReplayerResponse
+  status: 201
+}
+
+export type createReplayerResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type createReplayerResponseSuccess = (createReplayerResponse201) & {
+  headers: Headers;
+};
+export type createReplayerResponseError = (createReplayerResponse422) & {
+  headers: Headers;
+};
+
+export type createReplayerResponse = (createReplayerResponseSuccess | createReplayerResponseError)
+
+export const getCreateReplayerUrl = () => {
+
+
+
+
+  return `http://localhost:8085/replayer`
+}
+
+/**
+ * Spawns background process pairs (Fabric server & Replayer) and records their execution metadata.
+ * @summary Start a new replayer process pair
+ */
+export const createReplayer = async (startReplayerRequest: StartReplayerRequest, options?: RequestInit): Promise<ReplayerResponse> => {
+
+  return customInstance<ReplayerResponse>(getCreateReplayerUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(startReplayerRequest)
+  }
+);
+}
+
+
+
+export type terminateReplayerResponse204 = {
+  data: void
+  status: 204
+}
+
+export type terminateReplayerResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type terminateReplayerResponseSuccess = (terminateReplayerResponse204) & {
+  headers: Headers;
+};
+export type terminateReplayerResponseError = (terminateReplayerResponse422) & {
+  headers: Headers;
+};
+
+export type terminateReplayerResponse = (terminateReplayerResponseSuccess | terminateReplayerResponseError)
+
+export const getTerminateReplayerUrl = (replayerId: string,) => {
+
+
+
+
+  return `http://localhost:8085/replayer/${replayerId}`
+}
+
+/**
+ * Terminates fabric and replayer processes associated with the given replayer ID via SIGTERM.
+ * @summary Stop a replayer process pair
+ */
+export const terminateReplayer = async (replayerId: string, options?: RequestInit): Promise<void> => {
+
+  return customInstance<void>(getTerminateReplayerUrl(replayerId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);
 }
 
 
@@ -385,13 +501,13 @@ export const getUploadModelUrl = () => {
 
 
 
-  return `http://localhost:8081/models/`
+  return `http://localhost:8085/models/`
 }
 
 /**
  * @summary Upload Model
  */
-export const uploadModel = async (bodyUploadModel: BodyUploadModel, options?: RequestInit): Promise<uploadModelResponse> => {
+export const uploadModel = async (bodyUploadModel: BodyUploadModel, options?: RequestInit): Promise<Model> => {
     const formData = new FormData();
 formData.append(`file`, bodyUploadModel.file);
 formData.append(`name`, bodyUploadModel.name);
@@ -401,20 +517,14 @@ if(bodyUploadModel.tags !== undefined) {
  }
 formData.append(`description`, bodyUploadModel.description);
 
-  const res = await fetch(getUploadModelUrl(),
+  return customInstance<Model>(getUploadModelUrl(),
   {
     ...options,
     method: 'POST'
     ,
     body: formData
   }
-)
-
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: uploadModelResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as uploadModelResponse
+);
 }
 
 
@@ -450,28 +560,22 @@ export const getListModelsUrl = (params?: ListModelsParams,) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `http://localhost:8081/models/?${stringifiedParams}` : `http://localhost:8081/models/`
+  return stringifiedParams.length > 0 ? `http://localhost:8085/models/?${stringifiedParams}` : `http://localhost:8085/models/`
 }
 
 /**
  * @summary List Models
  */
-export const listModels = async (params?: ListModelsParams, options?: RequestInit): Promise<listModelsResponse> => {
+export const listModels = async (params?: ListModelsParams, options?: RequestInit): Promise<ModelListResponse> => {
 
-  const res = await fetch(getListModelsUrl(params),
+  return customInstance<ModelListResponse>(getListModelsUrl(params),
   {
     ...options,
     method: 'GET'
 
 
   }
-)
-
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: listModelsResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as listModelsResponse
+);
 }
 
 
@@ -500,28 +604,22 @@ export const getGetModelFileUrl = (modelId: string,) => {
 
 
 
-  return `http://localhost:8081/models/${modelId}`
+  return `http://localhost:8085/models/${modelId}`
 }
 
 /**
  * @summary Get Model File
  */
-export const getModelFile = async (modelId: string, options?: RequestInit): Promise<getModelFileResponse> => {
+export const getModelFile = async (modelId: string, options?: RequestInit): Promise<unknown> => {
 
-  const res = await fetch(getGetModelFileUrl(modelId),
+  return customInstance<unknown>(getGetModelFileUrl(modelId),
   {
     ...options,
     method: 'GET'
 
 
   }
-)
-
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: getModelFileResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getModelFileResponse
+);
 }
 
 
@@ -550,26 +648,20 @@ export const getGetModelInfoUrl = (modelId: string,) => {
 
 
 
-  return `http://localhost:8081/models/${modelId}/info`
+  return `http://localhost:8085/models/${modelId}/info`
 }
 
 /**
  * @summary Get Model Info
  */
-export const getModelInfo = async (modelId: string, options?: RequestInit): Promise<getModelInfoResponse> => {
+export const getModelInfo = async (modelId: string, options?: RequestInit): Promise<Model> => {
 
-  const res = await fetch(getGetModelInfoUrl(modelId),
+  return customInstance<Model>(getGetModelInfoUrl(modelId),
   {
     ...options,
     method: 'GET'
 
 
   }
-)
-
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: getModelInfoResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getModelInfoResponse
+);
 }

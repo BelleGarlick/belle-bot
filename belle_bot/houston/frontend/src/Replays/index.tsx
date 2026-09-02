@@ -15,9 +15,7 @@ export function Replays() {
 
     useEffect(() => {
         listReplays({ page: 0 }).then((x) => {
-            if (x.status === 200) {
-                setReplays(x.data);
-            }
+            setReplays(x);
         });
     }, []);
 
@@ -82,9 +80,7 @@ export function Replays() {
                         onTagsUpdated={(updatedList) => {
                             setSelectedReplays(updatedList);
                             listReplays({ page: 0 }).then((x) => {
-                                if (x.status === 200) {
-                                    setReplays(x.data);
-                                }
+                                setReplays(x);
                             });
                         }}
                     />
