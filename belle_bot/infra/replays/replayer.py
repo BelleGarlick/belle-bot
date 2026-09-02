@@ -4,13 +4,7 @@ import os
 import threading
 
 from belle_bot.fabric import FabricClient
-from belle_bot.houston.client.python.houston_api_client.api.replays import get_replay_file
-from belle_bot.houston.client.python import houston_api_client
-
-# todo create a common python houston client
-
-houston_client = houston_api_client.Client(base_url="http://localhost:8081/")
-
+from belle_bot.houston.client.py import replays
 
 """
 This module allows for replaying the given event
@@ -32,27 +26,25 @@ class ReplayLoader(threading.Thread):
         self.events = []
 
     def run(self):
-        response = get_replay_file.sync_detailed(replay_id=self.replay_id, client=houston_client)
-        if response.status_code == 200:
-            content_str = response.content.decode("utf-8")
+        replay_data = []
 
-            replay_data = []
-            for line in content_str.split("\n"):
-                split = line.split(",")
-                if len(split) < 2:
-                    continue
+        lines = replays.get_replay_file(self.replay_id).split("\n")
+        for line in lines:
+            split = line.split(",")
+            if len(split) < 2:
+                continue
 
-                key = split[0]
-                time = split[1]
-                remaining = ",".join(split[2:])
+            key = split[0]
+            time = split[1]
+            remaining = ",".join(split[2:])
 
-                replay_data.append({
-                    "stream": key,
-                    "timestamp": float(time),
-                    "value": json.loads(remaining)
-                })
+            replay_data.append({
+                "stream": key,
+                "timestamp": float(time),
+                "value": json.loads(remaining)
+            })
 
-            self.events = replay_data
+        self.events = replay_data
 
 
 class LogIterator:
@@ -109,14 +101,14 @@ async def main():
         last_item_time = current_item_time
 
         # Run this async
-        asyncio.create_task(CLIENT.publish_async(item["stream"], item['value']))
+        await CLIENT.publish_async(item["stream"], item['value'])
 
         if last_update_time is None or current_item_time - last_update_time > 1:
-            asyncio.create_task(CLIENT.publish_async("replayer", {
-                "replay_id": item["replay_id"],
+            last_update_time = current_item_time
+            await CLIENT.publish_async("replayer", {
+                "replay_id": replay_id,
                 "progress": progress
-            }))
-
+            })
 
     # Wait for all background tasks to finish
     tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
