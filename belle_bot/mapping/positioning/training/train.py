@@ -1,4 +1,6 @@
 import math
+import random
+from collections import deque
 
 import numpy as np
 
@@ -8,10 +10,11 @@ import mlflow
 
 from belle_bot.mapping.positioning.training.environment.env import Frame
 from belle_bot.mapping.positioning.training.environment.multi_environment import MultiEnvironment
+from belle_bot.mapping.positioning.training.environment.preprocessor import process_state
 from belle_bot.mapping.positioning.training.ml_model import PositionalModelling
-from belle_bot.mapping.positioning.training.models import GpsPoint, ModalityEnum, ImuData
 from belle_bot.mapping.positioning.training.normalisation import NormalisationBounds
 from belle_bot.mapping.positioning.training.utils import ReplayBuffer, TrainingSample
+from belle_bot.mapping.positioning.training.seeding import set_seed
 
 # todo
 #  estimate variance when training
@@ -24,21 +27,22 @@ from belle_bot.mapping.positioning.training.utils import ReplayBuffer, TrainingS
 #  add testing set here
 
 
-SEQUENCE_LENGTH = 100
-MINI_BATCH_SIZE = 500
-TRAIN_EVERY_N_STEPS = 50
-LOG_EVERY_N_STEPS = 5000
+LOG_EVERY_N_STEPS = 50_000
 SAVE_EVERY_N_STEPS = 50_000
+MAX_STEPS = 500_000
+SEQUENCE_LENGTH = 100
+N_LAYERS = 2
+
+TRAIN_EVERY_N_STEPS = 8
+MINI_BATCH_SIZE = 256
 MAX_SNAP_GPS_DISTANCE = 10
 INITIAL_TRAIN_SIZE = 500  # used to accumulate data for normalisation
-REPLAY_BUFFER_SIZE = 5_000
-N_ENVIRONMENTS = 20
+REPLAY_BUFFER_SIZE = 10000
+N_ENVIRONMENTS = 10
 GAUSSIAN_NOISE_FACTOR = 0.0
-MAX_STEPS = 100_000
-LEARNING_RATE = 1e-4
-EMBEDDING_SIZE = 256
-N_LAYERS = 2
-LR_GAMMA = 0.2
+LEARNING_RATE = 1e-3
+LR_GAMMA = 0.3
+RANDOM_SEED = 42
 
 
 # instead, sample more items, but only train on the items where the error is larger. so it becomes a sort of heirstic search. doing so means we're not wasting cycles train pointeless data.
@@ -51,54 +55,14 @@ device = torch.device('mps')
 #  - add rotated maps. need to handle magnetometer for that tho
 
 
-# realistically, i think the best thing to do is to jus use frames which embed the diff item
-def process_state(frames: list[Frame], seq_length, normalisation_bounds: NormalisationBounds):
-    modality_types = [ModalityEnum.PAD] * seq_length
-    modality_data = [[0] * 13 for _ in range(seq_length)]
-
-    # TODO change time step to be relative here
-
-    for i, item in enumerate(frames):
-        if isinstance(item.frame, ImuData):
-            # Update the modality data
-            # todo change the angle to cos / sin so that it's measured a lil better at the point from -180 to 180
-            modality_types.append(ModalityEnum.IMU)
-            modality_data.append(np.hstack((
-                item.position_change,
-                item.frame.acc / normalisation_bounds['imu.acc'],
-                item.frame.gyro / normalisation_bounds['imu.gyro'],
-                item.frame.angle / normalisation_bounds['imu.angle'],
-                [item.time_delta]
-            )))
-
-        elif isinstance(item.frame, GpsPoint):
-            # Update the modality data
-            modality_types.append(ModalityEnum.GPS)
-            modality_data.append(np.array(item.position_change.tolist() + [
-                item.frame.x / normalisation_bounds["gps.x"],
-                item.frame.y / normalisation_bounds["gps.y"],
-                item.frame.altitude / normalisation_bounds["gps.alt"],
-            ] + [0] * 6 + [item.time_delta]))  # padded the item so everything is same size
-
-        else:
-            # split up camera into multiple tokens
-            raise NotImplementedError()
-
-    modality_types = np.array([modality_types[-seq_length:]], dtype=np.int64)
-    modality_data = np.array([modality_data[-seq_length:]], dtype=np.float32)
-
-    return (
-        modality_data,
-        modality_types
-    )
-
 
 def sample(buffer: ReplayBuffer, idxs: list[int]):
     modality_frames, modality_types, ys = [], [], []
     for idx in idxs:
-        modality_frames.append(buffer[idx].model_input[0])
-        modality_types.append(buffer[idx].model_input[1])
-        ys.append(buffer[idx].target)
+        sample = buffer[idx]
+        modality_frames.append(sample.model_input[0])
+        modality_types.append(sample.model_input[1])
+        ys.append(sample.target)
 
     return (
         torch.tensor(np.concatenate(modality_frames), dtype=torch.float32, device=device),
@@ -107,23 +71,26 @@ def sample(buffer: ReplayBuffer, idxs: list[int]):
     )
 
 
-def train_model(buffer: ReplayBuffer):
+def train_model(buffer: ReplayBuffer, step: int):
     model.train()
     optimizer.zero_grad()
 
-    batch_idxs = buffer.sample(MINI_BATCH_SIZE)
+    # Use a deterministic seed for sampling based on the current step and RANDOM_SEED
+    sample_seed = RANDOM_SEED + step
+    batch_idxs = buffer.sample(MINI_BATCH_SIZE, seed=sample_seed)
 
     modality_frames, modality_types, ys = sample(buffer, batch_idxs)
     prediction = model(modality_frames, modality_types)
 
-    loss = F.huber_loss(prediction, ys)
+    loss_per_sample = F.huber_loss(prediction, ys, reduction='none').mean(dim=-1)
+    loss = loss_per_sample.mean()
     loss.backward()
     optimizer.step()
 
-    buffer[batch_idxs] = loss.item()
+    buffer[batch_idxs] = loss_per_sample.detach().cpu().numpy()
 
     model.eval()
-    return loss.item()
+    return loss.item(), np.abs(modality_frames.detach().cpu().numpy()).max()
 
 
 def train_normaliser(buffer: ReplayBuffer):
@@ -135,127 +102,143 @@ if __name__ == "__main__":
     # todo write a new way to create normalisation bounds. currently we have no way to fit the bounds
     bounds = NormalisationBounds().load("bounds.json")
 
-    model = PositionalModelling(13, EMBEDDING_SIZE, n_layers=N_LAYERS).to(device)
+    for _ in range(100):
+        EMBEDDING_SIZE = int(math.pow(random.random(), 1.5) * 512)
 
-    optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
+        set_seed(RANDOM_SEED)
 
-    env = MultiEnvironment(
-        subset="training",
-        envs=N_ENVIRONMENTS,
-        seq_len=SEQUENCE_LENGTH,
-        random_subsample=True
-    )
+        model = PositionalModelling(13, EMBEDDING_SIZE, n_layers=N_LAYERS, out_scale=MAX_SNAP_GPS_DISTANCE).to(device)
 
-    states: list[Frame] = env.reset().initial_states
-    # Start sample from the environment
-    buffer = ReplayBuffer(REPLAY_BUFFER_SIZE)
-    episode_step_error = []
-    episode_losses = []
+        optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
 
-    mlflow.set_experiment("positioning")
+        # todo add rotation augmentation bool
+        env = MultiEnvironment(
+            subset="training",
+            envs=N_ENVIRONMENTS,
+            seq_len=SEQUENCE_LENGTH,
+            random_subsample=True,
+            random_rotation=True,
+            seed=RANDOM_SEED
+        )
 
-    with mlflow.start_run(run_name="Layers {}x{}, MB {} RBS {}".format(N_LAYERS, EMBEDDING_SIZE, MINI_BATCH_SIZE, REPLAY_BUFFER_SIZE)):
-        mlflow.log_params({
-            "sequence_length": SEQUENCE_LENGTH,
-            "mini_batch_size": MINI_BATCH_SIZE,
-            "max_steps": MAX_STEPS,
-            "learning_rate": LEARNING_RATE,
-            "learning_rate_gamma": LR_GAMMA,
-            "replay_buffer_size": REPLAY_BUFFER_SIZE,
-            "n_environments": N_ENVIRONMENTS,
-            "gaussian_noise_factor": GAUSSIAN_NOISE_FACTOR,
-            "embedding_size": EMBEDDING_SIZE,
-            "n_layers": N_LAYERS,
-            "train_every_n_steps": TRAIN_EVERY_N_STEPS,
-        })
+        states: list[list[Frame]] = env.reset().initial_states
+        # Start sample from the environment
+        buffer = ReplayBuffer(REPLAY_BUFFER_SIZE)
+        episode_step_error = []
+        episode_losses = []
+        magnitudes = deque(maxlen=100)
 
-        model.eval()
-        for step in range(0, MAX_STEPS):
-            env_id: int = step % len(env)
+        mlflow.set_experiment("positioning")
 
-            percentage_complete = step / MAX_STEPS
-            percentage_remaining = 1 - percentage_complete
+        with mlflow.start_run(run_name="Layers {}x{}, MB {} RBS {}".format(N_LAYERS, EMBEDDING_SIZE, MINI_BATCH_SIZE, REPLAY_BUFFER_SIZE)):
+            # Re-set seed inside the MLflow run to ensure all environment setups and data loading are deterministic
+            set_seed(RANDOM_SEED)
 
-            # Scale the learning rate with the percentage_complete
-            scale = 1 - math.pow(step / MAX_STEPS, LR_GAMMA)
-            for g in optimizer.param_groups:
-                g['lr'] = LEARNING_RATE * scale
+            mlflow.log_params({
+                "sequence_length": SEQUENCE_LENGTH,
+                "mini_batch_size": MINI_BATCH_SIZE,
+                "max_steps": MAX_STEPS,
+                "learning_rate": LEARNING_RATE,
+                "learning_rate_gamma": LR_GAMMA,
+                "replay_buffer_size": REPLAY_BUFFER_SIZE,
+                "n_environments": N_ENVIRONMENTS,
+                "gaussian_noise_factor": GAUSSIAN_NOISE_FACTOR,
+                "embedding_size": EMBEDDING_SIZE,
+                "n_layers": N_LAYERS,
+                "train_every_n_steps": TRAIN_EVERY_N_STEPS,
+                "random_seed": RANDOM_SEED,
+            })
+            mlflow.set_tag("experiment", "model size")
 
-            # Process and create the model input to what the target change should be then predict the position for it
-            modality_data, modality_types = process_state(states[env_id], SEQUENCE_LENGTH, bounds)
-            with torch.no_grad():
-                predicted_position_change = model(
-                    torch.tensor(modality_data).to(device=device, dtype=torch.float32),
-                    torch.tensor(modality_types).to(device=device, dtype=torch.int64),
+            model.eval()
+            for step in range(0, MAX_STEPS):
+                env_id: int = step % len(env)
+
+                percentage_complete = step / MAX_STEPS
+                percentage_remaining = 1 - percentage_complete
+
+                # Scale the learning rate with the percentage_complete
+                scale = 1 - math.pow(step / MAX_STEPS, LR_GAMMA)
+                for g in optimizer.param_groups:
+                    g['lr'] = LEARNING_RATE * scale
+
+                # Process and create the model input to what the target change should be then predict the position for it
+                modality_data, modality_types = process_state(states[env_id], seq_length=SEQUENCE_LENGTH, normalisation_bounds=bounds)
+                with torch.no_grad():
+                    predicted_position_change = model(
+                        torch.tensor(modality_data, device=device, dtype=torch.float32),
+                        torch.tensor(modality_types, device=device, dtype=torch.int64),
+                    )
+                    predicted_position_change = predicted_position_change.cpu().numpy()[0]
+
+                # Calculate noise which is added to the step
+                position_noise_factor = percentage_remaining * GAUSSIAN_NOISE_FACTOR
+
+                # Use a deterministic seed for noise based on the current step and RANDOM_SEED
+                noise_rng = np.random.default_rng(RANDOM_SEED + step)
+                position_noise = noise_rng.uniform(-1, 1, predicted_position_change.shape).astype(np.float32) * position_noise_factor
+
+                # Perform the step change
+                new_state, terminated = env.step(
+                    env_id,
+                    predicted_position_change + position_noise
                 )
-                predicted_position_change = predicted_position_change.detach().cpu().numpy()[0] * MAX_SNAP_GPS_DISTANCE
 
-            # Calculate noise which is added to the step
-            position_noise_factor = percentage_remaining * GAUSSIAN_NOISE_FACTOR
-            position_noise = np.random.uniform(-1, 1, predicted_position_change.shape) * position_noise_factor
+                true_position_change = states[env_id][-1].position_change
 
-            # Perform the step change
-            state, true_position_change, terminated = env.step(
-                env_id,
-                predicted_position_change + position_noise,
-                max_error=10
-            )
-            states[env_id] = state
+                step_error = np.linalg.norm(true_position_change - predicted_position_change)
+                episode_step_error.append(step_error)
 
-            step_error = np.linalg.norm(true_position_change - predicted_position_change)
-            episode_step_error.append(step_error)
-            buffer.append(
-                TrainingSample(
-                    model_input=(modality_data, modality_types),
-                    target=true_position_change / MAX_SNAP_GPS_DISTANCE
-                ),
-                F.huber_loss(
-                    torch.tensor(predicted_position_change / MAX_SNAP_GPS_DISTANCE),
-                    torch.tensor(true_position_change / MAX_SNAP_GPS_DISTANCE)
-                ).item()
-            )
+                buffer.append(
+                    TrainingSample(
+                        model_input=(modality_data, modality_types),
+                        target=true_position_change
+                    ),
+                    error=F.huber_loss(
+                        torch.tensor(true_position_change, device=device, dtype=torch.float32),
+                        torch.tensor(predicted_position_change, device=device, dtype=torch.float32),
+                    ).detach().cpu().item(),
+                )
 
-            if len(buffer) == INITIAL_TRAIN_SIZE:
-                train_normaliser(buffer)
+                states[env_id] = new_state
 
-            mini_batch_loss = None
-            if len(buffer) >= MINI_BATCH_SIZE and (step + 1) % TRAIN_EVERY_N_STEPS == 0:
-                mini_batch_loss = train_model(buffer)
-                episode_losses.append(mini_batch_loss)
+                if len(buffer) == INITIAL_TRAIN_SIZE:
+                    train_normaliser(buffer)
 
-            # Reset env if terminated
-            if terminated:
-                states[env_id] = env.reset(env_id).initial_states[0]
+                mini_batch_loss = None
+                if len(buffer) >= MINI_BATCH_SIZE and (step + 1) % TRAIN_EVERY_N_STEPS == 0:
+                    mini_batch_loss, mb_magnitude = train_model(buffer, step)
+                    episode_losses.append(mini_batch_loss)
+                    magnitudes.append(mb_magnitude)
 
-            # Log metrics to mlflow
-            if (step + 1) % 10:
-                mlflow.log_metric("step_error", step_error, step=step)
-                mlflow.log_metric("lr", optimizer.param_groups[0]['lr'], step=step)
-                if mini_batch_loss is not None:
-                    mlflow.log_metric("loss", mini_batch_loss, step=step)
+                # Reset env if terminated
+                if terminated:
+                    states[env_id] = env.reset(env_id).initial_states[0]
 
-            # Print a status update every x steps
-            if (step + 1) % LOG_EVERY_N_STEPS == 0:
-                mean_step_err = np.mean(episode_step_error)
-                mean_loss = np.mean(episode_losses) if episode_losses else 0.0
-                print("\r{} Mean Step {:.5f} Loss {:.5f}".format(
-                    step + 1,
-                    mean_step_err,
-                    mean_loss
-                ))
-                mlflow.log_metric("mean_step_error_window", mean_step_err, step=step)
-                mlflow.log_metric("mean_loss_window", mean_loss, step=step)
-                episode_step_error = []
-                episode_losses = []
-                if (step + 1) % SAVE_EVERY_N_STEPS == 0:
-                    model_path = f"model-{step + 1}.pt"
-                    torch.save(model.state_dict(), model_path)
-                    # mlflow.log_artifact(model_path)
+                # Print a status update every x steps
+                if (step + 1) % LOG_EVERY_N_STEPS == 0:
+                    mean_step_err = np.mean(episode_step_error)
+                    mean_loss = np.mean(episode_losses) if episode_losses else 0.0
+                    print("\r{} Mean Step {:.5f} Loss {:.5f} MB mag: {:.5f}".format(
+                        step + 1,
+                        mean_step_err,
+                        mean_loss,
+                        np.mean(magnitudes)
+                    ))
+                    mlflow.log_metric("mean_step_error_window", mean_step_err, step=step)
+                    mlflow.log_metric("mean_loss_window", mean_loss, step=step)
+                    episode_step_error = []
+                    episode_losses = []
+                    # if (step + 1) % SAVE_EVERY_N_STEPS == 0:
+                    #     model_path = f"model-{step + 1}.pt"
+                        # torch.save(model.state_dict(), model_path)
+                        # mlflow.log_artifact(model_path)
 
-            elif step % 10 == 0:
-                print("\r{} Mean Step {:.5f} Loss {:.5f} {:.5f}".format(
-                    step,
-                    np.mean(episode_step_error),
-                    np.mean(episode_losses) if episode_losses else 0.0,
-                    buffer.mean_loss()
-                ), end="")
+                elif step % 10 == 0:
+                    print("\r{} Mean Step {:.5f} Loss {:.5f} MB mag: {:.5f}".format(
+                        step,
+                        np.mean(episode_step_error),
+                        np.mean(episode_losses) if episode_losses else 0.0,
+                        np.mean(magnitudes) if magnitudes else 0.0
+                        # buffer.mean_loss()
+                    ), end="")

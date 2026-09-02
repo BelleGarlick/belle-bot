@@ -1,7 +1,11 @@
 import json
+import math
 import random
+from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
+from numpy import dtype, ndarray
 
 from belle_bot.mapping.positioning.training.models import GpsPoint, ImuData
 from belle_bot.houston.client.py import replays
@@ -39,9 +43,13 @@ def _parse_events(replay_id: str):
     return events
 
 
-def _subsample_events(events):
+def _subsample_events(events, seed=None):
     half_length = int(len(events) / 2)
-    start_index = random.randint(0, half_length)
+    if seed is not None:
+        rng = random.Random(seed)
+        start_index = rng.randint(0, half_length)
+    else:
+        start_index = random.randint(0, half_length)
 
     return events[start_index:half_length + start_index]
 
@@ -105,8 +113,17 @@ def calculate_catmull_rom_segment(p0, p1, p2, p3, t) -> np.ndarray:
     return point
 
 
+@dataclass
+class StepFrame:
+    frame: GpsPoint | ImuData
+    last_position: np.ndarray
+    new_position: np.ndarray
+    delta_time: float
+    terminated: bool
+
+
 class Episode:
-    def __init__(self, replay_path, random_subsample=False):
+    def __init__(self, replay_path, random_subsample=False, rotation_angle: float | None = None, seed=None):
         self.replay_path = replay_path
         self.random_subsample = random_subsample
 
@@ -114,7 +131,33 @@ class Episode:
 
         events = _parse_events(self.replay_path)
         if self.random_subsample:
-            events = _subsample_events(events)
+            events = _subsample_events(events, seed=seed)
+
+        if rotation_angle is not None:
+            # Find origin
+            origin_gps = None
+            for e in events:
+                if isinstance(e, GpsPoint):
+                    origin_gps = e
+                    break
+            if origin_gps:
+                # Rotate
+                ox, oy = origin_gps.x, origin_gps.y
+                cos_theta = math.cos(rotation_angle)
+                sin_theta = math.sin(rotation_angle)
+                rotation_degrees = math.degrees(rotation_angle)
+
+                for e in events:
+                    if isinstance(e, GpsPoint):
+                        # Translate
+                        x, y = e.x - ox, e.y - oy
+                        # Rotate
+                        e.x = x * cos_theta - y * sin_theta + ox
+                        e.y = x * sin_theta + y * cos_theta + oy
+                    elif isinstance(e, ImuData):
+                        # Rotate yaw (index 2)
+                        e.angle = e.angle + np.array((0, 0, rotation_degrees))
+
         self.events = _create_event_pairs(events)
 
         self.current_step_idx = 0
@@ -166,18 +209,20 @@ class Episode:
     def get_current_frame(self):
         return self.events[self.current_step_idx][0]
 
-    def step(self) -> tuple[ImuData | GpsPoint, np.ndarray, bool]:
+    def step(self) -> StepFrame:
         """
         Move to the next step
 
         :return: Current event, resultant position, and whether terminated
         """
-        data = (
-            self.events[self.current_step_idx][0],
-            self.calculate_position(self.current_step_idx),
-            self.current_step_idx >= len(self.events) - 2
-        )
-
+        old_time = self.current_timestep()
         self.current_step_idx += 1
+        new_time = self.current_timestep()
 
-        return data
+        return StepFrame(
+            frame=self.events[self.current_step_idx][0],
+            last_position=self.calculate_position(self.current_step_idx - 1),
+            new_position=self.calculate_position(self.current_step_idx),
+            delta_time=new_time - old_time,
+            terminated=self.current_step_idx >= len(self.events) - 2
+        )

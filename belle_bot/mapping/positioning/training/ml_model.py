@@ -8,8 +8,10 @@ device = torch.device('mps')
 
 
 class PositionalModelling(nn.Module):
-    def __init__(self, max_feature_dim, embed_dim, n_layers=2):
+    def __init__(self, max_feature_dim, embed_dim, n_layers=2, out_scale=1):
         super().__init__()
+        self.out_scale=out_scale
+
         # Distinct projection layers for each modality
         self.imu_proj = nn.Linear(max_feature_dim, embed_dim)
         self.gps_proj = nn.Linear(max_feature_dim, embed_dim)
@@ -46,8 +48,8 @@ class PositionalModelling(nn.Module):
         x = self.out(x[:, -1, :])
 
         if return_state:
-            return x, hc
-        return x
+            return x * self.out_scale, hc
+        return x * self.out_scale
 
 
 class UnifiedSequenceTransformer(nn.Module):
