@@ -6,7 +6,7 @@ export default defineConfig({
     output: {
       target: 'src/api/api.ts',
       client: 'fetch',
-      baseUrl: 'http://localhost:8085',
+      baseUrl: 'http://localhost:8080',
       override: {
         mutator: {
           path: './src/api/mutator.ts',

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-export PYTHONPATH=server
+export PYTHONPATH=belle_bot/houston/server
 export HOUSTON_PATH=houston_data
 
-python3 server/houston_server_api/api.py
+python3 belle_bot/houston/server/houston_server_api/api.py

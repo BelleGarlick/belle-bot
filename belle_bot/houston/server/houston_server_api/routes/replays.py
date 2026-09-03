@@ -12,7 +12,7 @@ class ReplayListResponse(BaseModel):
     total: int
 
 
-@replay_router.post("/", response_model=Replay)
+@replay_router.post("", response_model=Replay)
 async def upload_replay(
         file: UploadFile = File(...),
         filename: str | None = Form(default=None),
@@ -34,7 +34,7 @@ async def upload_replay(
     )
 
 
-@replay_router.get("/", response_model=ReplayListResponse)
+@replay_router.get("", response_model=ReplayListResponse)
 async def list_replays(
     page: int | None = Query(None),
     tags: list[str] | None = Query(None),

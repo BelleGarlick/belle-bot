@@ -120,7 +120,7 @@ export const getUploadReplayUrl = () => {
 
 
 
-  return `http://localhost:8085/replays/`
+  return `http://localhost:8080/replays/`
 }
 
 /**
@@ -196,7 +196,7 @@ export const getListReplaysUrl = (params?: ListReplaysParams,) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `http://localhost:8085/replays/?${stringifiedParams}` : `http://localhost:8085/replays/`
+  return stringifiedParams.length > 0 ? `http://localhost:8080/replays/?${stringifiedParams}` : `http://localhost:8080/replays/`
 }
 
 /**
@@ -240,7 +240,7 @@ export const getGetReplayFileUrl = (replayId: string,) => {
 
 
 
-  return `http://localhost:8085/replays/${replayId}`
+  return `http://localhost:8080/replays/${replayId}`
 }
 
 /**
@@ -284,7 +284,7 @@ export const getUpdateReplayUrl = (replayId: string,) => {
 
 
 
-  return `http://localhost:8085/replays/${replayId}`
+  return `http://localhost:8080/replays/${replayId}`
 }
 
 /**
@@ -329,7 +329,7 @@ export const getGetReplayInfoUrl = (replayId: string,) => {
 
 
 
-  return `http://localhost:8085/replays/${replayId}/info`
+  return `http://localhost:8080/replays/${replayId}/info`
 }
 
 /**
@@ -366,7 +366,7 @@ export const getGetReplayersUrl = () => {
 
 
 
-  return `http://localhost:8085/replayer`
+  return `http://localhost:8080/replayer`
 }
 
 /**
@@ -411,7 +411,7 @@ export const getCreateReplayerUrl = () => {
 
 
 
-  return `http://localhost:8085/replayer`
+  return `http://localhost:8080/replayer`
 }
 
 /**
@@ -456,7 +456,7 @@ export const getTerminateReplayerUrl = (replayerId: string,) => {
 
 
 
-  return `http://localhost:8085/replayer/${replayerId}`
+  return `http://localhost:8080/replayer/${replayerId}`
 }
 
 /**
@@ -501,7 +501,7 @@ export const getUploadModelUrl = () => {
 
 
 
-  return `http://localhost:8085/models/`
+  return `http://localhost:8080/models/`
 }
 
 /**
@@ -560,7 +560,7 @@ export const getListModelsUrl = (params?: ListModelsParams,) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `http://localhost:8085/models/?${stringifiedParams}` : `http://localhost:8085/models/`
+  return stringifiedParams.length > 0 ? `http://localhost:8080/models/?${stringifiedParams}` : `http://localhost:8080/models/`
 }
 
 /**
@@ -604,7 +604,7 @@ export const getGetModelFileUrl = (modelId: string,) => {
 
 
 
-  return `http://localhost:8085/models/${modelId}`
+  return `http://localhost:8080/models/${modelId}`
 }
 
 /**
@@ -648,7 +648,7 @@ export const getGetModelInfoUrl = (modelId: string,) => {
 
 
 
-  return `http://localhost:8085/models/${modelId}/info`
+  return `http://localhost:8080/models/${modelId}/info`
 }
 
 /**
