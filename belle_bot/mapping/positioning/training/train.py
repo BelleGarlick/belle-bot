@@ -1,5 +1,7 @@
 import math
+import os.path
 import random
+import uuid
 from collections import deque
 
 import numpy as np
@@ -8,13 +10,14 @@ import torch
 import torch.nn.functional as F
 import mlflow
 
+from belle_bot.mapping.positioning.config.positioning_config import PositioningConfig
 from belle_bot.mapping.positioning.training.environment.env import Frame
 from belle_bot.mapping.positioning.training.environment.multi_environment import MultiEnvironment
 from belle_bot.mapping.positioning.training.environment.preprocessor import process_state
 from belle_bot.mapping.positioning.training.ml_model import PositionalModelling
 from belle_bot.mapping.positioning.training.normalisation import NormalisationBounds
 from belle_bot.mapping.positioning.training.utils import ReplayBuffer, TrainingSample
-from belle_bot.mapping.positioning.training.seeding import set_seed
+from belle_bot.utils.cli import clpy
 
 # todo
 #  estimate variance when training
@@ -26,23 +29,21 @@ from belle_bot.mapping.positioning.training.seeding import set_seed
 #  cli args to trigger training runs
 #  add testing set here
 
+os.environ["CACHE_REPLAYS"] = "true"
 
-LOG_EVERY_N_STEPS = 50_000
-SAVE_EVERY_N_STEPS = 50_000
-MAX_STEPS = 500_000
-SEQUENCE_LENGTH = 100
-N_LAYERS = 2
+config = PositioningConfig()
 
-TRAIN_EVERY_N_STEPS = 8
-MINI_BATCH_SIZE = 256
-MAX_SNAP_GPS_DISTANCE = 10
+config.training.checkpoint_every_n_steps = None
+
 INITIAL_TRAIN_SIZE = 500  # used to accumulate data for normalisation
-REPLAY_BUFFER_SIZE = 10000
-N_ENVIRONMENTS = 10
-GAUSSIAN_NOISE_FACTOR = 0.0
-LEARNING_RATE = 1e-3
-LR_GAMMA = 0.3
 RANDOM_SEED = 42
+
+
+
+EXPERIMENT_TAG = "all 3"
+# ablation 4
+#   enable replay buffer size
+#   enable snapping
 
 
 # instead, sample more items, but only train on the items where the error is larger. so it becomes a sort of heirstic search. doing so means we're not wasting cycles train pointeless data.
@@ -71,13 +72,11 @@ def sample(buffer: ReplayBuffer, idxs: list[int]):
     )
 
 
-def train_model(buffer: ReplayBuffer, step: int):
+def train_model(buffer: ReplayBuffer):
     model.train()
     optimizer.zero_grad()
 
-    # Use a deterministic seed for sampling based on the current step and RANDOM_SEED
-    sample_seed = RANDOM_SEED + step
-    batch_idxs = buffer.sample(MINI_BATCH_SIZE, seed=sample_seed)
+    batch_idxs = buffer.sample(config.training.mini_batch_size)
 
     modality_frames, modality_types, ys = sample(buffer, batch_idxs)
     prediction = model(modality_frames, modality_types)
@@ -93,9 +92,14 @@ def train_model(buffer: ReplayBuffer, step: int):
     return loss.item(), np.abs(modality_frames.detach().cpu().numpy()).max()
 
 
-def train_normaliser(buffer: ReplayBuffer):
-    pass
-    # bounds.fit(buffer).save("bounds.json")
+def validate_same_tag():
+    if os.path.exists("train-tag.txt"):
+        with open("train-tag.txt", "r") as f:
+            if f.readline().strip() != EXPERIMENT_TAG:
+                raise ValueError("Changed train tag")
+    else:
+        with open("train-tag.txt", "w") as f:
+            f.write(EXPERIMENT_TAG)
 
 
 if __name__ == "__main__":
@@ -103,67 +107,77 @@ if __name__ == "__main__":
     bounds = NormalisationBounds().load("bounds.json")
 
     for _ in range(100):
-        EMBEDDING_SIZE = int(math.pow(random.random(), 1.5) * 512)
+        # todo ablate on replay buffer size in next one
+        config.training.train_every_n_steps = random.choice([8, 16, 32, 64])
+        config.model.embedding_size = random.choice([4, 8, 16, 32, 64, 128, 192])
+        config.model.sequence_length = random.randint(50, 200)
+        config.training.learning_rate_gamma = (random.random() * 0.4) + 0.2
+        config.training.learning_rate = random.choice([1e-4, 1e-5, 5e-4, 1e-3])
+        config.training.max_gps_snap_distance = random.randint(3, 7)
+        config.training.gaussian_noise_factor = random.random() * 0.3
+        config.training.mini_batch_size = random.randint(8, 512)
+        config.training.n_environments = random.randint(1, 10)
 
-        set_seed(RANDOM_SEED)
+        clpy.print_values(config)
 
-        model = PositionalModelling(13, EMBEDDING_SIZE, n_layers=N_LAYERS, out_scale=MAX_SNAP_GPS_DISTANCE).to(device)
+        model = PositionalModelling(13, config.model, out_scale=config.training.max_gps_snap_distance).to(device)
 
-        optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
+        optimizer = torch.optim.AdamW(model.parameters(), lr=config.training.learning_rate)
 
         # todo add rotation augmentation bool
         env = MultiEnvironment(
             subset="training",
-            envs=N_ENVIRONMENTS,
-            seq_len=SEQUENCE_LENGTH,
-            random_subsample=True,
-            random_rotation=True,
+            envs=config.training.n_environments,
+            seq_len=config.model.sequence_length,
+            random_subsample=config.training.random_subsample,
+            random_rotation=config.training.random_rotation,
             seed=RANDOM_SEED
         )
 
         states: list[list[Frame]] = env.reset().initial_states
         # Start sample from the environment
-        buffer = ReplayBuffer(REPLAY_BUFFER_SIZE)
+        buffer = ReplayBuffer(config.training.replay_buffer_size)
         episode_step_error = []
         episode_losses = []
         magnitudes = deque(maxlen=100)
 
         mlflow.set_experiment("positioning")
 
-        with mlflow.start_run(run_name="Layers {}x{}, MB {} RBS {}".format(N_LAYERS, EMBEDDING_SIZE, MINI_BATCH_SIZE, REPLAY_BUFFER_SIZE)):
+        with mlflow.start_run(run_name=str(uuid.uuid4())):
             # Re-set seed inside the MLflow run to ensure all environment setups and data loading are deterministic
-            set_seed(RANDOM_SEED)
+            # set_seed(RANDOM_SEED)
 
             mlflow.log_params({
-                "sequence_length": SEQUENCE_LENGTH,
-                "mini_batch_size": MINI_BATCH_SIZE,
-                "max_steps": MAX_STEPS,
-                "learning_rate": LEARNING_RATE,
-                "learning_rate_gamma": LR_GAMMA,
-                "replay_buffer_size": REPLAY_BUFFER_SIZE,
-                "n_environments": N_ENVIRONMENTS,
-                "gaussian_noise_factor": GAUSSIAN_NOISE_FACTOR,
-                "embedding_size": EMBEDDING_SIZE,
-                "n_layers": N_LAYERS,
-                "train_every_n_steps": TRAIN_EVERY_N_STEPS,
+                "sequence_length": config.model.sequence_length,
+                "mini_batch_size": config.training.mini_batch_size,
+                "max_steps": config.training.max_steps,
+                "learning_rate": config.training.learning_rate,
+                "learning_rate_gamma": config.training.learning_rate_gamma,
+                "replay_buffer_size": config.training.replay_buffer_size,
+                "n_environments": config.training.n_environments,
+                "gaussian_noise_factor": config.training.gaussian_noise_factor,
+                "embedding_size": config.model.embedding_size,
+                "n_layers": config.model.n_layers,
+                "train_every_n_steps": config.training.train_every_n_steps,
                 "random_seed": RANDOM_SEED,
+                "max_snap_gps_distance": config.training.max_gps_snap_distance
             })
-            mlflow.set_tag("experiment", "model size")
+            mlflow.set_tag("experiment", EXPERIMENT_TAG)
 
             model.eval()
-            for step in range(0, MAX_STEPS):
+            for step in range(0, config.training.max_steps):
                 env_id: int = step % len(env)
 
-                percentage_complete = step / MAX_STEPS
+                percentage_complete = step / config.training.max_steps
                 percentage_remaining = 1 - percentage_complete
 
                 # Scale the learning rate with the percentage_complete
-                scale = 1 - math.pow(step / MAX_STEPS, LR_GAMMA)
+                scale = 1 - math.pow(percentage_complete, config.training.learning_rate_gamma)
                 for g in optimizer.param_groups:
-                    g['lr'] = LEARNING_RATE * scale
+                    g['lr'] = config.training.learning_rate * scale
 
                 # Process and create the model input to what the target change should be then predict the position for it
-                modality_data, modality_types = process_state(states[env_id], seq_length=SEQUENCE_LENGTH, normalisation_bounds=bounds)
+                modality_data, modality_types = process_state(states[env_id], seq_length=config.model.sequence_length, normalisation_bounds=bounds)
                 with torch.no_grad():
                     predicted_position_change = model(
                         torch.tensor(modality_data, device=device, dtype=torch.float32),
@@ -172,13 +186,14 @@ if __name__ == "__main__":
                     predicted_position_change = predicted_position_change.cpu().numpy()[0]
 
                 # Calculate noise which is added to the step
-                position_noise_factor = percentage_remaining * GAUSSIAN_NOISE_FACTOR
+                position_noise_factor = percentage_remaining * config.training.gaussian_noise_factor
 
                 # Use a deterministic seed for noise based on the current step and RANDOM_SEED
                 noise_rng = np.random.default_rng(RANDOM_SEED + step)
                 position_noise = noise_rng.uniform(-1, 1, predicted_position_change.shape).astype(np.float32) * position_noise_factor
 
                 # Perform the step change
+                # THE SNAPPING IS NOT DEFINED HERE??? Need to try enabling it. atm the error is just done on it's own?
                 new_state, terminated = env.step(
                     env_id,
                     predicted_position_change + position_noise
@@ -202,12 +217,12 @@ if __name__ == "__main__":
 
                 states[env_id] = new_state
 
-                if len(buffer) == INITIAL_TRAIN_SIZE:
-                    train_normaliser(buffer)
+                # if len(buffer) == INITIAL_TRAIN_SIZE:
+                #     train_normaliser(buffer)
 
                 mini_batch_loss = None
-                if len(buffer) >= MINI_BATCH_SIZE and (step + 1) % TRAIN_EVERY_N_STEPS == 0:
-                    mini_batch_loss, mb_magnitude = train_model(buffer, step)
+                if len(buffer) >= config.training.mini_batch_size and (step + 1) % config.training.train_every_n_steps == 0:
+                    mini_batch_loss, mb_magnitude = train_model(buffer)
                     episode_losses.append(mini_batch_loss)
                     magnitudes.append(mb_magnitude)
 
@@ -216,9 +231,10 @@ if __name__ == "__main__":
                     states[env_id] = env.reset(env_id).initial_states[0]
 
                 # Print a status update every x steps
-                if (step + 1) % LOG_EVERY_N_STEPS == 0:
+                if (step + 1) % config.training.log_every_n_steps == 0:
                     mean_step_err = np.mean(episode_step_error)
                     mean_loss = np.mean(episode_losses) if episode_losses else 0.0
+
                     print("\r{} Mean Step {:.5f} Loss {:.5f} MB mag: {:.5f}".format(
                         step + 1,
                         mean_step_err,
@@ -229,10 +245,11 @@ if __name__ == "__main__":
                     mlflow.log_metric("mean_loss_window", mean_loss, step=step)
                     episode_step_error = []
                     episode_losses = []
-                    # if (step + 1) % SAVE_EVERY_N_STEPS == 0:
-                    #     model_path = f"model-{step + 1}.pt"
-                        # torch.save(model.state_dict(), model_path)
-                        # mlflow.log_artifact(model_path)
+                    if config.training.checkpoint_every_n_steps is not None \
+                            and(step + 1) % config.training.checkpoint_every_n_steps == 0:
+                        model_path = f"model-{step + 1}.pt"
+                        torch.save(model.state_dict(), model_path)
+                        mlflow.log_artifact(model_path)
 
                 elif step % 10 == 0:
                     print("\r{} Mean Step {:.5f} Loss {:.5f} MB mag: {:.5f}".format(
@@ -242,3 +259,5 @@ if __name__ == "__main__":
                         np.mean(magnitudes) if magnitudes else 0.0
                         # buffer.mean_loss()
                     ), end="")
+
+        validate_same_tag()

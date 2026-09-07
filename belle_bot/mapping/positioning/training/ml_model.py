@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+from belle_bot.mapping.positioning.config.positioning_model_config import PositioningModelConfig
 from belle_bot.mapping.positioning.training.models import ModalityEnum
 
 
@@ -8,26 +9,26 @@ device = torch.device('mps')
 
 
 class PositionalModelling(nn.Module):
-    def __init__(self, max_feature_dim, embed_dim, n_layers=2, out_scale=1):
+    def __init__(self, max_feature_dim, config: PositioningModelConfig, out_scale=1):
         super().__init__()
         self.out_scale=out_scale
 
         # Distinct projection layers for each modality
-        self.imu_proj = nn.Linear(max_feature_dim, embed_dim)
-        self.gps_proj = nn.Linear(max_feature_dim, embed_dim)
+        self.imu_proj = nn.Linear(max_feature_dim, config.embedding_size)
+        self.gps_proj = nn.Linear(max_feature_dim, config.embedding_size)
 
         # Learnable indicator embeddings for each modality type
-        self.modality_embed = nn.Embedding(3, embed_dim)  # 0: pad, 1: imu, 2: gps
+        self.modality_embed = nn.Embedding(3, config.embedding_size)  # 0: pad, 1: imu, 2: gps
 
         self.lstm = nn.LSTM(
-            embed_dim,
-            embed_dim,
-            num_layers=n_layers,
+            config.embedding_size,
+            config.embedding_size,
+            num_layers=config.n_layers,
             bias=True,
             batch_first=True,
             dropout=0.01
         )
-        self.out = nn.Linear(embed_dim, 3)
+        self.out = nn.Linear(config.embedding_size, 3)
 
     def forward(self, merged_seq, modality_ids, hc=None, return_state=False):
         batch_size, seq_len, _ = merged_seq.shape

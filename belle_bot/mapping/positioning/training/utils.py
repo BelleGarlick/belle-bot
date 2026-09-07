@@ -22,7 +22,7 @@ class ReplayBuffer:
         self.buffer = deque[TrainingSample](maxlen=maxlen)
         self.buffer_errors = deque[float](maxlen=maxlen)
 
-    def sample(self, n, seed=None):
+    def sample(self, n):
         # Higher temperature (e.g., 0.5 - 1.0) prevents extreme probability collapse
         # while still prioritizing higher-error experiences
         temperature = 0.5
@@ -32,14 +32,19 @@ class ReplayBuffer:
 
         # Subtract max for numerical stability before exponentiation
         exp_errors = np.exp(scaled_errors - np.max(scaled_errors))
-        errors = exp_errors / np.sum(exp_errors)
-
-        if seed is not None:
-            rng = np.random.default_rng(seed)
-            return rng.choice(len(self.buffer), size=n, replace=False, p=errors)
+        
+        # Add a small epsilon to ensure all entries are non-zero
+        # This prevents ValueError in np.random.choice when replace=False
+        errors = exp_errors + 1e-9
+        errors /= np.sum(errors)
 
         # replace=False guarantees unique indices
-        return np.random.choice(len(self.buffer), size=n, replace=False, p=errors)
+        return np.random.choice(
+            len(self.buffer),
+            size=min(n, len(self.buffer)),
+            replace=False,
+            p=errors
+        )
 
     def __getitem__(self, idxs):
         if isinstance(idxs, (list, np.ndarray)):

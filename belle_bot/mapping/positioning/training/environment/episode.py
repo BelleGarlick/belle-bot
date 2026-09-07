@@ -1,7 +1,9 @@
 import json
 import math
+import os
 import random
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -11,8 +13,27 @@ from belle_bot.mapping.positioning.training.models import GpsPoint, ImuData
 from belle_bot.houston.client.py import replays
 
 
+def get_replay_file(replay_id: str):
+    path = Path(__file__).parent / "replays_cache"
+    file_path = path / f"{replay_id}.txt"
+
+    if os.environ["CACHE_REPLAYS"] == "true":
+        path.mkdir(parents=True, exist_ok=True)
+        if file_path.exists():
+            with open(str(file_path), "r") as f:
+                return f.read().split("\n")
+
+    lines = replays.get_replay_file(replay_id)
+
+    if os.environ["CACHE_REPLAYS"] == "true":
+        with open(str(file_path), "w") as f:
+            f.write(lines)
+
+    return lines.split("\n")
+
+
 def _parse_events(replay_id: str):
-    lines = replays.get_replay_file(replay_id).split("\n")
+    lines = get_replay_file(replay_id)
 
     events = []
     for i, line in enumerate(lines):
