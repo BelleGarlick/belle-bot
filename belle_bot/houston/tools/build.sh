@@ -1,20 +1,29 @@
 #!/bin/bash
 set -e
 
+# Get the directory where the script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+HOUSTON_DIR="$( cd "$SCRIPT_DIR/.." && pwd )"
+PROJECT_ROOT="$( cd "$HOUSTON_DIR/../.." && pwd )"
+
 # Load NVM if it exists
 export NVM_DIR="$HOME/.nvm"
 if [ -s "$NVM_DIR/nvm.sh" ]; then
     . "$NVM_DIR/nvm.sh"
 fi
 
-export HOUSTON_PATH=
+# Set HOUSTON_PATH if it's not set
+if [ -z "$HOUSTON_PATH" ]; then
+    export HOUSTON_PATH="$PROJECT_ROOT/houston_data"
+fi
 
 # Ensure the output directory exists
-mkdir -p frontend/src/api
+mkdir -p "$HOUSTON_DIR/frontend/src/api"
 
 # Export the OpenAPI schema from the FastAPI app
-# Using the requested houston/server/houston_server_api/api.py:api
-PYTHONPATH=server /Users/belle/Developer/belle-bot/.venv/bin/python -c '
+echo "Generating openapi.json..."
+cd "$PROJECT_ROOT"
+PYTHONPATH="$HOUSTON_DIR/server" .venv/bin/python -c '
 import json
 import sys
 from houston_server_api.api import app
@@ -26,18 +35,14 @@ except ImportError:
     api = app
 
 print(json.dumps(api.openapi()))
-' > openapi.json
-
-# Generate the Python client using openapi-python-client
-PATH="/Users/belle/Developer/belle-bot/.venv/bin:$PATH" openapi-python-client generate --path openapi.json --output-path client/python --overwrite
+' > "$HOUSTON_DIR/openapi.json"
 
 # Generate the TypeScript API using orval and fetch
-# orval must be installed (e.g., via npm install -g orval)
-
-cd frontend
+echo "Generating TypeScript API..."
+cd "$HOUSTON_DIR/frontend"
 npx orval --config orval.config.ts
 
 # Clean up
-#rm ../openapi.json
+rm "$HOUSTON_DIR/openapi.json"
 
-echo "API generated successfully at houston/frontend/api/api.ts"
+echo "API generated successfully"

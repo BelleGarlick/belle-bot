@@ -4,7 +4,7 @@
  * Houston API
  * OpenAPI spec version: 0.1.0
  */
-import customInstance from './mutator';
+import { customInstance } from './mutator';
 export interface BodyUploadModel {
   file: Blob;
   name: string;
@@ -120,13 +120,13 @@ export const getUploadReplayUrl = () => {
 
 
 
-  return `http://localhost:8080/replays/`
+  return `http://localhost:8080/api/replays`
 }
 
 /**
  * @summary Upload Replay
  */
-export const uploadReplay = async (bodyUploadReplay: BodyUploadReplay, options?: RequestInit): Promise<Replay> => {
+export const uploadReplay = async (bodyUploadReplay: BodyUploadReplay, options?: RequestInit): Promise<uploadReplayResponse> => {
     const formData = new FormData();
 formData.append(`file`, bodyUploadReplay.file);
 if(bodyUploadReplay.filename !== undefined && bodyUploadReplay.filename !== null) {
@@ -145,15 +145,14 @@ if(bodyUploadReplay.permanent !== undefined) {
  formData.append(`permanent`, bodyUploadReplay.permanent.toString())
  }
 
-  return customInstance<Replay>(getUploadReplayUrl(),
+  return customInstance<uploadReplayResponse>(getUploadReplayUrl(),
   {
     ...options,
     method: 'POST'
     ,
     body: formData
   }
-);
-}
+);}
 
 
 
@@ -196,23 +195,22 @@ export const getListReplaysUrl = (params?: ListReplaysParams,) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `http://localhost:8080/replays/?${stringifiedParams}` : `http://localhost:8080/replays/`
+  return stringifiedParams.length > 0 ? `http://localhost:8080/api/replays?${stringifiedParams}` : `http://localhost:8080/api/replays`
 }
 
 /**
  * @summary List Replays
  */
-export const listReplays = async (params?: ListReplaysParams, options?: RequestInit): Promise<ReplayListResponse> => {
+export const listReplays = async (params?: ListReplaysParams, options?: RequestInit): Promise<listReplaysResponse> => {
 
-  return customInstance<ReplayListResponse>(getListReplaysUrl(params),
+  return customInstance<listReplaysResponse>(getListReplaysUrl(params),
   {
     ...options,
     method: 'GET'
 
 
   }
-);
-}
+);}
 
 
 
@@ -240,23 +238,22 @@ export const getGetReplayFileUrl = (replayId: string,) => {
 
 
 
-  return `http://localhost:8080/replays/${replayId}`
+  return `http://localhost:8080/api/replays/${replayId}`
 }
 
 /**
  * @summary Get Replay File
  */
-export const getReplayFile = async (replayId: string, options?: RequestInit): Promise<unknown> => {
+export const getReplayFile = async (replayId: string, options?: RequestInit): Promise<getReplayFileResponse> => {
 
-  return customInstance<unknown>(getGetReplayFileUrl(replayId),
+  return customInstance<getReplayFileResponse>(getGetReplayFileUrl(replayId),
   {
     ...options,
     method: 'GET'
 
 
   }
-);
-}
+);}
 
 
 
@@ -284,24 +281,23 @@ export const getUpdateReplayUrl = (replayId: string,) => {
 
 
 
-  return `http://localhost:8080/replays/${replayId}`
+  return `http://localhost:8080/api/replays/${replayId}`
 }
 
 /**
  * @summary Update Replay
  */
 export const updateReplay = async (replayId: string,
-    replay: Replay, options?: RequestInit): Promise<Replay> => {
+    replay: Replay, options?: RequestInit): Promise<updateReplayResponse> => {
 
-  return customInstance<Replay>(getUpdateReplayUrl(replayId),
+  return customInstance<updateReplayResponse>(getUpdateReplayUrl(replayId),
   {
     ...options,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(replay)
   }
-);
-}
+);}
 
 
 
@@ -329,23 +325,22 @@ export const getGetReplayInfoUrl = (replayId: string,) => {
 
 
 
-  return `http://localhost:8080/replays/${replayId}/info`
+  return `http://localhost:8080/api/replays/${replayId}/info`
 }
 
 /**
  * @summary Get Replay Info
  */
-export const getReplayInfo = async (replayId: string, options?: RequestInit): Promise<Replay> => {
+export const getReplayInfo = async (replayId: string, options?: RequestInit): Promise<getReplayInfoResponse> => {
 
-  return customInstance<Replay>(getGetReplayInfoUrl(replayId),
+  return customInstance<getReplayInfoResponse>(getGetReplayInfoUrl(replayId),
   {
     ...options,
     method: 'GET'
 
 
   }
-);
-}
+);}
 
 
 
@@ -366,24 +361,23 @@ export const getGetReplayersUrl = () => {
 
 
 
-  return `http://localhost:8080/replayer`
+  return `http://localhost:8080/api/replayer`
 }
 
 /**
  * Retrieve all running replayer metadata from the pid storage.
  * @summary List all active replayers
  */
-export const getReplayers = async ( options?: RequestInit): Promise<ReplayerResponse[]> => {
+export const getReplayers = async ( options?: RequestInit): Promise<getReplayersResponse> => {
 
-  return customInstance<ReplayerResponse[]>(getGetReplayersUrl(),
+  return customInstance<getReplayersResponse>(getGetReplayersUrl(),
   {
     ...options,
     method: 'GET'
 
 
   }
-);
-}
+);}
 
 
 
@@ -411,24 +405,23 @@ export const getCreateReplayerUrl = () => {
 
 
 
-  return `http://localhost:8080/replayer`
+  return `http://localhost:8080/api/replayer`
 }
 
 /**
  * Spawns background process pairs (Fabric server & Replayer) and records their execution metadata.
  * @summary Start a new replayer process pair
  */
-export const createReplayer = async (startReplayerRequest: StartReplayerRequest, options?: RequestInit): Promise<ReplayerResponse> => {
+export const createReplayer = async (startReplayerRequest: StartReplayerRequest, options?: RequestInit): Promise<createReplayerResponse> => {
 
-  return customInstance<ReplayerResponse>(getCreateReplayerUrl(),
+  return customInstance<createReplayerResponse>(getCreateReplayerUrl(),
   {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(startReplayerRequest)
   }
-);
-}
+);}
 
 
 
@@ -456,24 +449,23 @@ export const getTerminateReplayerUrl = (replayerId: string,) => {
 
 
 
-  return `http://localhost:8080/replayer/${replayerId}`
+  return `http://localhost:8080/api/replayer/${replayerId}`
 }
 
 /**
  * Terminates fabric and replayer processes associated with the given replayer ID via SIGTERM.
  * @summary Stop a replayer process pair
  */
-export const terminateReplayer = async (replayerId: string, options?: RequestInit): Promise<void> => {
+export const terminateReplayer = async (replayerId: string, options?: RequestInit): Promise<terminateReplayerResponse> => {
 
-  return customInstance<void>(getTerminateReplayerUrl(replayerId),
+  return customInstance<terminateReplayerResponse>(getTerminateReplayerUrl(replayerId),
   {
     ...options,
     method: 'DELETE'
 
 
   }
-);
-}
+);}
 
 
 
@@ -501,13 +493,13 @@ export const getUploadModelUrl = () => {
 
 
 
-  return `http://localhost:8080/models/`
+  return `http://localhost:8080/api/models/`
 }
 
 /**
  * @summary Upload Model
  */
-export const uploadModel = async (bodyUploadModel: BodyUploadModel, options?: RequestInit): Promise<Model> => {
+export const uploadModel = async (bodyUploadModel: BodyUploadModel, options?: RequestInit): Promise<uploadModelResponse> => {
     const formData = new FormData();
 formData.append(`file`, bodyUploadModel.file);
 formData.append(`name`, bodyUploadModel.name);
@@ -517,15 +509,14 @@ if(bodyUploadModel.tags !== undefined) {
  }
 formData.append(`description`, bodyUploadModel.description);
 
-  return customInstance<Model>(getUploadModelUrl(),
+  return customInstance<uploadModelResponse>(getUploadModelUrl(),
   {
     ...options,
     method: 'POST'
     ,
     body: formData
   }
-);
-}
+);}
 
 
 
@@ -560,23 +551,22 @@ export const getListModelsUrl = (params?: ListModelsParams,) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `http://localhost:8080/models/?${stringifiedParams}` : `http://localhost:8080/models/`
+  return stringifiedParams.length > 0 ? `http://localhost:8080/api/models/?${stringifiedParams}` : `http://localhost:8080/api/models/`
 }
 
 /**
  * @summary List Models
  */
-export const listModels = async (params?: ListModelsParams, options?: RequestInit): Promise<ModelListResponse> => {
+export const listModels = async (params?: ListModelsParams, options?: RequestInit): Promise<listModelsResponse> => {
 
-  return customInstance<ModelListResponse>(getListModelsUrl(params),
+  return customInstance<listModelsResponse>(getListModelsUrl(params),
   {
     ...options,
     method: 'GET'
 
 
   }
-);
-}
+);}
 
 
 
@@ -604,23 +594,22 @@ export const getGetModelFileUrl = (modelId: string,) => {
 
 
 
-  return `http://localhost:8080/models/${modelId}`
+  return `http://localhost:8080/api/models/${modelId}`
 }
 
 /**
  * @summary Get Model File
  */
-export const getModelFile = async (modelId: string, options?: RequestInit): Promise<unknown> => {
+export const getModelFile = async (modelId: string, options?: RequestInit): Promise<getModelFileResponse> => {
 
-  return customInstance<unknown>(getGetModelFileUrl(modelId),
+  return customInstance<getModelFileResponse>(getGetModelFileUrl(modelId),
   {
     ...options,
     method: 'GET'
 
 
   }
-);
-}
+);}
 
 
 
@@ -648,20 +637,55 @@ export const getGetModelInfoUrl = (modelId: string,) => {
 
 
 
-  return `http://localhost:8080/models/${modelId}/info`
+  return `http://localhost:8080/api/models/${modelId}/info`
 }
 
 /**
  * @summary Get Model Info
  */
-export const getModelInfo = async (modelId: string, options?: RequestInit): Promise<Model> => {
+export const getModelInfo = async (modelId: string, options?: RequestInit): Promise<getModelInfoResponse> => {
 
-  return customInstance<Model>(getGetModelInfoUrl(modelId),
+  return customInstance<getModelInfoResponse>(getGetModelInfoUrl(modelId),
   {
     ...options,
     method: 'GET'
 
 
   }
-);
+);}
+
+
+
+export type readIndexResponse200 = {
+  data: unknown
+  status: 200
 }
+
+export type readIndexResponseSuccess = (readIndexResponse200) & {
+  headers: Headers;
+};
+;
+
+export type readIndexResponse = (readIndexResponseSuccess)
+
+export const getReadIndexUrl = () => {
+
+
+
+
+  return `http://localhost:8080/`
+}
+
+/**
+ * @summary Read Index
+ */
+export const readIndex = async ( options?: RequestInit): Promise<readIndexResponse> => {
+
+  return customInstance<readIndexResponse>(getReadIndexUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}

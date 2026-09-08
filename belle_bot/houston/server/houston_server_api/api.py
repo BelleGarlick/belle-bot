@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, APIRouter
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from houston_server_api import routes
@@ -26,11 +26,13 @@ app = FastAPI(
     generate_unique_id_function=lambda route: route.name
 )
 
+api_router = APIRouter(prefix="/api")
+app.include_router(api_router)
 
-app.include_router(routes.replay_router)
-app.include_router(routes.replayer_router)
-app.include_router(routes.models_router)
-# app.include_router(dataset_router)
+api_router.include_router(routes.replay_router)
+api_router.include_router(routes.replayer_router)
+api_router.include_router(routes.models_router)
+# api_router.include_router(dataset_router)
 
 @app.get("/")
 async def read_index():
