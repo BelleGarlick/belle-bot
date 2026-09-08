@@ -103,7 +103,7 @@ class MultiEnvironment:
             env_seed = self.seed + idx + self._new_replay_idx * 1000
 
         self.environments[idx] = Environment(
-            Episode(replay_id, self.random_subsample, rotation_angle=angle, seed=env_seed),
+            Episode(self.config, replay_id, self.random_subsample, rotation_angle=angle, seed=env_seed),
             self.seq_len
         )
 
