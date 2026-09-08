@@ -4,16 +4,15 @@ import os
 import random
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 import numpy as np
-from numpy import dtype, ndarray
 
+from belle_bot.houston.client.py.config import HoustonConfig
 from belle_bot.mapping.positioning.training.models import GpsPoint, ImuData
 from belle_bot.houston.client.py import replays
 
 
-def get_replay_file(replay_id: str):
+def get_replay_file(config: HoustonConfig, replay_id: str):
     path = Path(__file__).parent / "replays_cache"
     file_path = path / f"{replay_id}.txt"
 
@@ -23,7 +22,7 @@ def get_replay_file(replay_id: str):
             with open(str(file_path), "r") as f:
                 return f.read().split("\n")
 
-    lines = replays.get_replay_file(replay_id)
+    lines = replays.get_replay_file(config, replay_id)
 
     if os.environ["CACHE_REPLAYS"] == "true":
         with open(str(file_path), "w") as f:
@@ -32,8 +31,8 @@ def get_replay_file(replay_id: str):
     return lines.split("\n")
 
 
-def _parse_events(replay_id: str):
-    lines = get_replay_file(replay_id)
+def _parse_events(config: HoustonConfig, replay_id: str):
+    lines = get_replay_file(config, replay_id)
 
     events = []
     for i, line in enumerate(lines):

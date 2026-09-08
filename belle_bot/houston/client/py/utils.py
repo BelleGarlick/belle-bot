@@ -1,11 +1,10 @@
 import requests
 
+from belle_bot.houston.client.py.config import HoustonConfig
 
-HOUSTON_URL = "http://localhost:8080"
 
-
-def get(url, json=True):
-    response = requests.get(HOUSTON_URL + url)
+def get(config: HoustonConfig, url, json=True):
+    response = requests.get(config.endpoint + url)
     if json:
         return response.json()
     return response.text

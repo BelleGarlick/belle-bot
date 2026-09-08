@@ -39,11 +39,7 @@ INITIAL_TRAIN_SIZE = 500  # used to accumulate data for normalisation
 RANDOM_SEED = 42
 
 
-
-EXPERIMENT_TAG = "all 3"
-# ablation 4
-#   enable replay buffer size
-#   enable snapping
+EXPERIMENT_TAG = "all 5"
 
 
 # instead, sample more items, but only train on the items where the error is larger. so it becomes a sort of heirstic search. doing so means we're not wasting cycles train pointeless data.
@@ -104,17 +100,21 @@ def validate_same_tag():
 
 if __name__ == "__main__":
     # todo write a new way to create normalisation bounds. currently we have no way to fit the bounds
+    mlflow.set_tracking_uri(config.mlflow.endpoint)
+
     bounds = NormalisationBounds().load("bounds.json")
 
     for _ in range(100):
         # todo ablate on replay buffer size in next one
-        config.training.train_every_n_steps = random.choice([8, 16, 32, 64])
-        config.model.embedding_size = random.choice([4, 8, 16, 32, 64, 128, 192])
+        config.model.embedding_size = random.choice([32, 48, 64, 96, 128])
+        config.training.train_every_n_steps = random.choice([8, 16, 32, 48])
         config.model.sequence_length = random.randint(50, 200)
+        config.training.replay_buffer_size = random.randint(1000, 50_000)
         config.training.learning_rate_gamma = (random.random() * 0.4) + 0.2
-        config.training.learning_rate = random.choice([1e-4, 1e-5, 5e-4, 1e-3])
-        config.training.max_gps_snap_distance = random.randint(3, 7)
-        config.training.gaussian_noise_factor = random.random() * 0.3
+        config.training.learning_rate = random.choice([1e-5, 5e-4, 1e-3])
+        config.training.actual_snap_distance = random.randint(3, 20)
+        config.training.max_gps_snap_distance = random.randint(2, 7)
+        config.training.gaussian_noise_factor = random.random() * 0.25
         config.training.mini_batch_size = random.randint(8, 512)
         config.training.n_environments = random.randint(1, 10)
 
@@ -126,6 +126,7 @@ if __name__ == "__main__":
 
         # todo add rotation augmentation bool
         env = MultiEnvironment(
+            config,
             subset="training",
             envs=config.training.n_environments,
             seq_len=config.model.sequence_length,
@@ -147,21 +148,7 @@ if __name__ == "__main__":
             # Re-set seed inside the MLflow run to ensure all environment setups and data loading are deterministic
             # set_seed(RANDOM_SEED)
 
-            mlflow.log_params({
-                "sequence_length": config.model.sequence_length,
-                "mini_batch_size": config.training.mini_batch_size,
-                "max_steps": config.training.max_steps,
-                "learning_rate": config.training.learning_rate,
-                "learning_rate_gamma": config.training.learning_rate_gamma,
-                "replay_buffer_size": config.training.replay_buffer_size,
-                "n_environments": config.training.n_environments,
-                "gaussian_noise_factor": config.training.gaussian_noise_factor,
-                "embedding_size": config.model.embedding_size,
-                "n_layers": config.model.n_layers,
-                "train_every_n_steps": config.training.train_every_n_steps,
-                "random_seed": RANDOM_SEED,
-                "max_snap_gps_distance": config.training.max_gps_snap_distance
-            })
+            mlflow.log_params(clpy.to_dict(config))
             mlflow.set_tag("experiment", EXPERIMENT_TAG)
 
             model.eval()
@@ -196,7 +183,8 @@ if __name__ == "__main__":
                 # THE SNAPPING IS NOT DEFINED HERE??? Need to try enabling it. atm the error is just done on it's own?
                 new_state, terminated = env.step(
                     env_id,
-                    predicted_position_change + position_noise
+                    predicted_position_change + position_noise,
+                    max_error=config.training.actual_snap_distance
                 )
 
                 true_position_change = states[env_id][-1].position_change
