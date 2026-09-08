@@ -8,6 +8,7 @@ from pathlib import Path
 import numpy as np
 
 from belle_bot.houston.client.py.config import HoustonConfig
+from belle_bot.mapping.positioning.config.positioning_config import PositioningConfig
 from belle_bot.mapping.positioning.training.models import GpsPoint, ImuData
 from belle_bot.houston.client.py import replays
 
@@ -143,13 +144,13 @@ class StepFrame:
 
 
 class Episode:
-    def __init__(self, replay_path, random_subsample=False, rotation_angle: float | None = None, seed=None):
+    def __init__(self, config: PositioningConfig, replay_path, random_subsample=False, rotation_angle: float | None = None, seed=None):
         self.replay_path = replay_path
         self.random_subsample = random_subsample
 
         self.events: list[tuple[ImuData | GpsPoint, GpsPoint, GpsPoint, GpsPoint, GpsPoint]] = []
 
-        events = _parse_events(self.replay_path)
+        events = _parse_events(config.houston, self.replay_path)
         if self.random_subsample:
             events = _subsample_events(events, seed=seed)
 

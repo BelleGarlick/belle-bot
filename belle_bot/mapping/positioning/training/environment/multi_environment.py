@@ -34,6 +34,7 @@ class ResetData:
 class MultiEnvironment:
 
     def __init__(self, config: PositioningConfig, subset: Literal['training', 'testing'] | None, seq_len, envs=8, random_subsample=False, random_rotation=False, seed=None):
+        self.config = config
         self.replay_ids: list[str] = load_replay_ids(config=config.houston, subset=subset)
 
         self._new_replay_idx = -1
@@ -79,7 +80,7 @@ class MultiEnvironment:
 
                 self.environments.append(
                     Environment(
-                        Episode(replay_id, self.random_subsample, rotation_angle=angle, seed=env_seed),
+                        Episode(self.config, replay_id, self.random_subsample, rotation_angle=angle, seed=env_seed),
                         self.seq_len
                     )
                 )
