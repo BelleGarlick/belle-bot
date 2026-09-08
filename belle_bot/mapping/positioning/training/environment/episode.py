@@ -7,10 +7,10 @@ from pathlib import Path
 
 import numpy as np
 
-from belle_bot.houston.client.py.config import HoustonConfig
+from houston.client.py.config import HoustonConfig
+from houston.client.py import replays
 from belle_bot.mapping.positioning.config.positioning_config import PositioningConfig
 from belle_bot.mapping.positioning.training.models import GpsPoint, ImuData
-from belle_bot.houston.client.py import replays
 
 
 def get_replay_file(config: HoustonConfig, replay_id: str):

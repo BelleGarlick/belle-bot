@@ -1,7 +1,7 @@
 from urllib.parse import urlencode
 
-from belle_bot.houston.client.py.config import HoustonConfig
-from belle_bot.houston.client.py.utils import get
+from houston.client.py.config import HoustonConfig
+from houston.client.py.utils import get
 
 
 def query_replays(config: HoustonConfig, page: int, tags: list[str] | None = None) -> list[dict]:

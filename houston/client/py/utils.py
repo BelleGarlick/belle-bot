@@ -1,6 +1,6 @@
 import requests
 
-from belle_bot.houston.client.py.config import HoustonConfig
+from houston.client.py.config import HoustonConfig
 
 
 def get(config: HoustonConfig, url, json=True):

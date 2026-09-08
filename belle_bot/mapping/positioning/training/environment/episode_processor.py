@@ -5,7 +5,7 @@ from typing import Literal
 
 import numpy as np
 
-from belle_bot.houston.client.py import replays
+from houston.client.py import replays
 from belle_bot.mapping.positioning.training.environment.env import Frame
 from belle_bot.mapping.positioning.training.environment.episode import Episode
 from belle_bot.mapping.positioning.training.models import GpsPoint

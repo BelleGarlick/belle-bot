@@ -4,11 +4,11 @@ import random
 from attr import dataclass
 from typing_extensions import Literal
 
-from belle_bot.houston.client.py.config import HoustonConfig
+from houston.client.py.config import HoustonConfig
 from belle_bot.mapping.positioning.config.positioning_config import PositioningConfig
 from belle_bot.mapping.positioning.training.environment import Environment, Episode
 from belle_bot.mapping.positioning.training.environment.env import Frame
-from belle_bot.houston.client.py import replays
+from houston.client.py import replays
 
 
 def load_replay_ids(config: HoustonConfig, subset: Literal['training', 'testing'] | None) -> list[str]:

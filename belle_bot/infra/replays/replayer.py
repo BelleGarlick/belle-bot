@@ -4,7 +4,7 @@ import os
 import threading
 
 from belle_bot.fabric import FabricClient
-from belle_bot.houston.client.py import replays
+from houston.client.py import replays
 
 """
 This module allows for replaying the given event

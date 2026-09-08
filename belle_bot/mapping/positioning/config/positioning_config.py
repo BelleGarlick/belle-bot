@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from belle_bot.houston.client.py.config import HoustonConfig
+from houston.client.py.config import HoustonConfig
 from belle_bot.mapping.positioning.config.positioning_model_config import PositioningModelConfig
 from belle_bot.mapping.positioning.config.positioning_training_config import PositioningTrainingConfig
 
