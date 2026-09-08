@@ -1,5 +1,6 @@
 import math
 import os.path
+from pathlib import Path
 import random
 import uuid
 from collections import deque
@@ -49,7 +50,7 @@ EXPERIMENT_TAG = "all 6"
 
 # instead, sample more items, but only train on the items where the error is larger. so it becomes a sort of heirstic search. doing so means we're not wasting cycles train pointeless data.
 
-device = torch.device('mps')
+device = torch.device('cuda')
 
 
 def sample(buffer: ReplayBuffer, idxs: list[int]):
@@ -101,7 +102,8 @@ if __name__ == "__main__":
     # todo write a new way to create normalisation bounds. currently we have no way to fit the bounds
     mlflow.set_tracking_uri(config.mlflow.endpoint)
 
-    bounds = NormalisationBounds().load("bounds.json")
+    bounds_path = Path(__file__).parent / "bounds.json"
+    bounds = NormalisationBounds().load(bounds_path)
 
     for _ in range(100):
         config.training.actual_snap_distance = random.randint(3, 10)
