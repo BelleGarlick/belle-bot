@@ -14,7 +14,7 @@ if __name__ == "__main__":
     # Download runs as a pandas table
     runs_df = mlflow.search_runs(
         experiment_names=["positioning"],
-        filter_string='tags.experiment = "all 4"'
+        filter_string='tags.experiment = "all 5" and metrics.mean_step_error_window < 0.15',
     )
 
     # 3. Clean and prepare the data for the decision tree
@@ -74,12 +74,14 @@ if __name__ == "__main__":
     highest_val = discrepancies.max()
     print(f"\nHighest discrepancy column: {highest_discrepancy_col} with value {highest_val:.4f}")
 
-    print("Decision Tree successfully fitted to MLflow run results!")
-
-    fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(4, 4), dpi=800)
-    tree.plot_tree(rf_model.estimators_[0], feature_names=X.columns, filled=True, class_names=True)
-    plt.show()
+    # print("Decision Tree successfully fitted to MLflow run results!")
+    # fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(4, 4), dpi=800)
+    # tree.plot_tree(rf_model.estimators_[0], feature_names=X.columns, filled=True, class_names=True)
+    # plt.show()
 
     correlations = X.apply(lambda col: pd.Series(col).corr(y, method='spearman'))
     print("Spearman Correlation with Error Metric:")
     print(correlations.sort_values())
+
+    "Mean"
+    print(np.mean(y))

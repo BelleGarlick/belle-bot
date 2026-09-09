@@ -1,3 +1,4 @@
+import sys
 from typing import Type, Union
 
 from pydantic import BaseModel
@@ -44,5 +45,23 @@ def to_dict(config: Union[BaseModel, dict]) -> dict:
         return dict(items)
 
     return flatten(config)
-    
-    
+
+
+def parse_cli_args(default_args):
+    print(sys.argv)
+
+    args_dict = {}
+    for key, item in to_dict(default_args).items():
+        args_dict["--" + key] = item
+
+    for i in range(len(sys.argv) - 1):
+        if i == "-h" or i == "--help":
+            print_help(args_dict)
+            sys.exit()
+
+        if sys.argv[i] in args_dict:
+            args_dict[sys.argv[i]] = sys.argv[i + 1]
+            # todo update the args
+            # todo somehow parse
+
+    return default_args

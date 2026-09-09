@@ -12,10 +12,12 @@ import mlflow
 
 from belle_bot.mapping.positioning.config.positioning_config import PositioningConfig
 from belle_bot.mapping.positioning.training.environment.env import Frame
+from belle_bot.mapping.positioning.training.environment.episode_processor import load_episodes
 from belle_bot.mapping.positioning.training.environment.multi_environment import MultiEnvironment
 from belle_bot.mapping.positioning.training.environment.preprocessor import process_state
 from belle_bot.mapping.positioning.training.ml_model import PositionalModelling
 from belle_bot.mapping.positioning.training.normalisation import NormalisationBounds
+from belle_bot.mapping.positioning.training.testing import perform_evals
 from belle_bot.mapping.positioning.training.utils import ReplayBuffer, TrainingSample
 from belle_bot.utils.cli import clpy
 
@@ -31,7 +33,7 @@ from belle_bot.utils.cli import clpy
 
 os.environ["CACHE_REPLAYS"] = "true"
 
-config = PositioningConfig()
+config = clpy.parse_cli_args(PositioningConfig())
 
 config.training.checkpoint_every_n_steps = None
 
@@ -39,18 +41,15 @@ INITIAL_TRAIN_SIZE = 500  # used to accumulate data for normalisation
 RANDOM_SEED = 42
 
 
-EXPERIMENT_TAG = "all 5"
+EXPERIMENT_TAG = "all 6"
+# for 6
+#   training length should go up to 1 million now training is much faster
+#   potentially add in eval for 7th run so that we can see performance on unseen data
 
 
 # instead, sample more items, but only train on the items where the error is larger. so it becomes a sort of heirstic search. doing so means we're not wasting cycles train pointeless data.
 
 device = torch.device('mps')
-
-
-# todo also make make it so that eventually we can make something more stochastic where frames are dropped / not perfectly discrete.
-# todo update the testing
-#  - add rotated maps. need to handle magnetometer for that tho
-
 
 
 def sample(buffer: ReplayBuffer, idxs: list[int]):
@@ -105,17 +104,16 @@ if __name__ == "__main__":
     bounds = NormalisationBounds().load("bounds.json")
 
     for _ in range(100):
-        # todo ablate on replay buffer size in next one
+        config.training.actual_snap_distance = random.randint(3, 10)
+        config.training.gaussian_noise_factor = random.random() * 0.15
+        config.training.max_gps_snap_distance = random.randint(3, 7)
         config.model.embedding_size = random.choice([32, 48, 64, 96, 128])
-        config.training.train_every_n_steps = random.choice([8, 16, 32, 48])
-        config.model.sequence_length = random.randint(50, 200)
+        config.training.train_every_n_steps = random.choice([16, 20, 24, 28, 32, 36, 40, 44, 48])
+        config.model.sequence_length = random.randint(75, 200)
         config.training.replay_buffer_size = random.randint(1000, 50_000)
         config.training.learning_rate_gamma = (random.random() * 0.4) + 0.2
-        config.training.learning_rate = random.choice([1e-5, 5e-4, 1e-3])
-        config.training.actual_snap_distance = random.randint(3, 20)
-        config.training.max_gps_snap_distance = random.randint(2, 7)
-        config.training.gaussian_noise_factor = random.random() * 0.25
-        config.training.mini_batch_size = random.randint(8, 512)
+        config.training.learning_rate = random.choice([1e-4, 2.5e-4, 5e-4, 7.5e-4, 1e-3])
+        config.training.mini_batch_size = random.randint(8, 384)
         config.training.n_environments = random.randint(1, 10)
 
         clpy.print_values(config)
@@ -124,7 +122,6 @@ if __name__ == "__main__":
 
         optimizer = torch.optim.AdamW(model.parameters(), lr=config.training.learning_rate)
 
-        # todo add rotation augmentation bool
         env = MultiEnvironment(
             config,
             subset="training",
@@ -145,9 +142,6 @@ if __name__ == "__main__":
         mlflow.set_experiment("positioning")
 
         with mlflow.start_run(run_name=str(uuid.uuid4())):
-            # Re-set seed inside the MLflow run to ensure all environment setups and data loading are deterministic
-            # set_seed(RANDOM_SEED)
-
             mlflow.log_params(clpy.to_dict(config))
             mlflow.set_tag("experiment", EXPERIMENT_TAG)
 
@@ -223,14 +217,6 @@ if __name__ == "__main__":
                     mean_step_err = np.mean(episode_step_error)
                     mean_loss = np.mean(episode_losses) if episode_losses else 0.0
 
-                    print("\r{} Mean Step {:.5f} Loss {:.5f} MB mag: {:.5f}".format(
-                        step + 1,
-                        mean_step_err,
-                        mean_loss,
-                        np.mean(magnitudes)
-                    ))
-                    mlflow.log_metric("mean_step_error_window", mean_step_err, step=step)
-                    mlflow.log_metric("mean_loss_window", mean_loss, step=step)
                     episode_step_error = []
                     episode_losses = []
                     if config.training.checkpoint_every_n_steps is not None \
@@ -239,7 +225,31 @@ if __name__ == "__main__":
                         torch.save(model.state_dict(), model_path)
                         mlflow.log_artifact(model_path)
 
-                elif step % 10 == 0:
+                    eval = perform_evals(
+                        episodes=load_episodes(config, "training"),
+                        model=model,
+                        bounds=bounds,
+                    )
+
+                    mlflow.log_metrics({
+                        "mean_loss_window": mean_loss,
+                        "mean_step_error_window": mean_step_err,
+                        "mean_position_error": eval["mean_position_error"],
+                        "mean_final_position_error": eval["mean_final_position_error"],
+                        "step": step
+                    }, step=step)
+
+                    print("\r{} Mean Step {:.5f} Loss {:.5f} MB mag: {:.5f} mean pos error: {} mean final pos error: {}".format(
+                        step + 1,
+                        mean_step_err,
+                        mean_loss,
+                        np.mean(magnitudes),
+                        eval["mean_position_error"],
+                        eval["mean_final_position_error"],
+                    ))
+
+
+                elif step % 50 == 0:
                     print("\r{} Mean Step {:.5f} Loss {:.5f} MB mag: {:.5f}".format(
                         step,
                         np.mean(episode_step_error),

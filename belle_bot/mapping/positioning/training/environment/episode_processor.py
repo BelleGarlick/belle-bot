@@ -5,18 +5,21 @@ from typing import Literal
 
 import numpy as np
 
+from belle_bot.mapping.positioning.config.positioning_config import PositioningConfig
 from houston.client.py import replays
 from belle_bot.mapping.positioning.training.environment.env import Frame
 from belle_bot.mapping.positioning.training.environment.episode import Episode
 from belle_bot.mapping.positioning.training.models import GpsPoint
+from houston.client.py.config import HoustonConfig
 
 
-def load_replay_ids(subset: Literal['training', 'testing'] | None) -> list[str]:
+def load_replay_ids(config: HoustonConfig, subset: Literal['training', 'testing'] | None) -> list[str]:
     filter = ["dataset/mapping/position"]
     if subset:
         filter += [subset]
 
     replay_ids = replays.query_replays(
+        config,
         page=0,
         tags=filter
     )['replays']
@@ -67,8 +70,8 @@ def process_episode(episode: Episode):
 #  eventually turn into web dataset
 #  eventually make it so we can have randomness during this so the model can deal with imperfect data
 
-def load_episodes(subset: Literal['training', 'testing'], limit=None, augment_rotation: int | None = None):
-    replay_ids = load_replay_ids(subset)
+def load_episodes(config: PositioningConfig, subset: Literal['training', 'testing'], limit=None, augment_rotation: int | None = None):
+    replay_ids = load_replay_ids(config.houston, subset)
 
     episodes = []
     for replay_id in replay_ids:
@@ -76,7 +79,7 @@ def load_episodes(subset: Literal['training', 'testing'], limit=None, augment_ro
             for _ in range(augment_rotation):
                 episodes.append(Episode(replay_id, random_subsample=False, rotation_angle=random.random() * math.tau))
         else:
-            episodes.append(Episode(replay_id, random_subsample=False))
+            episodes.append(Episode(config, replay_id, random_subsample=False))
 
         if limit is not None and len(episodes) >= limit:
             break
