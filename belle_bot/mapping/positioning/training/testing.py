@@ -25,7 +25,7 @@ def perform_evals(
         bounds: NormalisationBounds,
         plot: bool = False
 ):
-    device = torch.device('mps')
+    device = torch.device('cuda')
 
     position_errors = []
     final_position_errors = []

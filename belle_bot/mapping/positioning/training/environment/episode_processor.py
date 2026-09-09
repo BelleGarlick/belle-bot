@@ -11,20 +11,7 @@ from belle_bot.mapping.positioning.training.environment.env import Frame
 from belle_bot.mapping.positioning.training.environment.episode import Episode
 from belle_bot.mapping.positioning.training.models import GpsPoint
 from houston.client.py.config import HoustonConfig
-
-
-def load_replay_ids(config: HoustonConfig, subset: Literal['training', 'testing'] | None) -> list[str]:
-    filter = ["dataset/mapping/position"]
-    if subset:
-        filter += [subset]
-
-    replay_ids = replays.query_replays(
-        config,
-        page=0,
-        tags=filter
-    )['replays']
-
-    return sorted([x["replay_id"] for x in replay_ids])
+from belle_bot.mapping.positioning.training.environment.multi_environment import load_replay_ids
 
 
 

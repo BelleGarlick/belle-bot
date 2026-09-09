@@ -228,7 +228,7 @@ if __name__ == "__main__":
                         mlflow.log_artifact(model_path)
 
                     eval = perform_evals(
-                        episodes=load_episodes(config, "training"),
+                        episodes=load_episodes(config, "testing"),
                         model=model,
                         bounds=bounds,
                     )
