@@ -14,7 +14,8 @@ if __name__ == "__main__":
     # Download runs as a pandas table
     runs_df = mlflow.search_runs(
         experiment_names=["positioning"],
-        filter_string='tags.experiment = "all 5" and metrics.mean_step_error_window < 0.15',
+        # filter_string='tags.experiment = "all 5"'
+        filter_string='tags.experiment = "all 6" and metrics.step >= 499999'
     )
 
     # 3. Clean and prepare the data for the decision tree
@@ -44,6 +45,8 @@ if __name__ == "__main__":
     X = X.fillna(0)
     y = y.dropna()  # Remove runs that don't have the target metric
     X = X.loc[y.index]  # Align features with the remaining targets
+
+    print(len(X))
 
     rf_model = RandomForestRegressor(
         n_estimators=100,

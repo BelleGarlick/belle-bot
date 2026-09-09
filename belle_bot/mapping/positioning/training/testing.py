@@ -3,6 +3,7 @@ import copy
 import torch
 import numpy as np
 
+from belle_bot.mapping.positioning.config.positioning_config import PositioningConfig
 from belle_bot.mapping.positioning.training.environment import Episode
 from belle_bot.mapping.positioning.training.environment.env import Frame
 from belle_bot.mapping.positioning.training.environment.episode_processor import load_episodes
@@ -17,6 +18,7 @@ from belle_bot.mapping.positioning.training.seeding import set_seed
 
 
 def perform_evals(
+        config: PositioningConfig,
         episodes: list[Episode],
         model: PositionalModelling,
         bounds: NormalisationBounds,
@@ -62,7 +64,7 @@ def perform_evals(
                     time_delta=step.delta_time
                 ))
 
-                modal_data_np, modal_types_np = process_state(data, 100, bounds)
+                modal_data_np, modal_types_np = process_state(data, config.model.sequence_length, bounds)
 
                 modal_data = torch.tensor(modal_data_np, dtype=torch.float32, device=device)
                 modal_types = torch.tensor(modal_types_np, dtype=torch.int64, device=device)

@@ -42,10 +42,9 @@ INITIAL_TRAIN_SIZE = 500  # used to accumulate data for normalisation
 RANDOM_SEED = 42
 
 
-EXPERIMENT_TAG = "all 6"
-# for 6
-#   training length should go up to 1 million now training is much faster
-#   potentially add in eval for 7th run so that we can see performance on unseen data
+EXPERIMENT_TAG = "all 7"
+# for 8
+#   add snapping into eval so eval results are better
 
 
 # instead, sample more items, but only train on the items where the error is larger. so it becomes a sort of heirstic search. doing so means we're not wasting cycles train pointeless data.
@@ -106,15 +105,15 @@ if __name__ == "__main__":
     bounds = NormalisationBounds().load(bounds_path)
 
     for _ in range(100):
-        config.training.actual_snap_distance = random.randint(3, 10)
-        config.training.gaussian_noise_factor = random.random() * 0.15
+        config.training.actual_snap_distance = random.randint(3, 7)
+        config.training.gaussian_noise_factor = random.random() * 0.1
         config.training.max_gps_snap_distance = random.randint(3, 7)
         config.model.embedding_size = random.choice([32, 48, 64, 96, 128])
-        config.training.train_every_n_steps = random.choice([16, 20, 24, 28, 32, 36, 40, 44, 48])
-        config.model.sequence_length = random.randint(75, 200)
+        config.training.train_every_n_steps = random.choice([16, 20, 24, 28, 32, 36])
+        config.model.sequence_length = random.randint(100, 200)
         config.training.replay_buffer_size = random.randint(1000, 50_000)
         config.training.learning_rate_gamma = (random.random() * 0.4) + 0.2
-        config.training.learning_rate = random.choice([1e-4, 2.5e-4, 5e-4, 7.5e-4, 1e-3])
+        config.training.learning_rate = random.choice([5e-4, 6e-4, 7e-4, 8e-4, 9e-4, 1e-3])
         config.training.mini_batch_size = random.randint(8, 384)
         config.training.n_environments = random.randint(1, 10)
 
@@ -236,20 +235,15 @@ if __name__ == "__main__":
                     mlflow.log_metrics({
                         "mean_loss_window": mean_loss,
                         "mean_step_error_window": mean_step_err,
-                        "mean_position_error": eval["mean_position_error"],
-                        "mean_final_position_error": eval["mean_final_position_error"],
-                        "step": step
+                        "step": step + 1
                     }, step=step)
 
-                    print("\r{} Mean Step {:.5f} Loss {:.5f} MB mag: {:.5f} mean pos error: {} mean final pos error: {}".format(
+                    print("\r{} Mean Step {:.5f} Loss {:.5f} MB mag: {:.5f}".format(
                         step + 1,
                         mean_step_err,
                         mean_loss,
-                        np.mean(magnitudes),
-                        eval["mean_position_error"],
-                        eval["mean_final_position_error"],
+                        np.mean(magnitudes)
                     ))
-
 
                 elif step % 50 == 0:
                     print("\r{} Mean Step {:.5f} Loss {:.5f} MB mag: {:.5f}".format(
@@ -259,5 +253,18 @@ if __name__ == "__main__":
                         np.mean(magnitudes) if magnitudes else 0.0
                         # buffer.mean_loss()
                     ), end="")
+
+        eval = perform_evals(
+            config=config,
+            episodes=load_episodes(config, "testing"),
+            model=model,
+            bounds=bounds,
+        )
+
+        mlflow.log_metrics({
+            "mean_position_error": eval["mean_position_error"],
+            "mean_final_position_error": eval["mean_final_position_error"],
+        }, step=step)
+
 
         validate_same_tag()
