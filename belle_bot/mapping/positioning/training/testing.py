@@ -13,9 +13,6 @@ from belle_bot.mapping.positioning.training.normalisation import NormalisationBo
 from belle_bot.mapping.positioning.training.seeding import set_seed
 
 
-MAX_SNAP_GPS_DISTANCE = 510
-
-
 # todo change to in memory state to feed in one at a time
 
 
@@ -70,7 +67,7 @@ def perform_evals(
                 modal_data = torch.tensor(modal_data_np, dtype=torch.float32, device=device)
                 modal_types = torch.tensor(modal_types_np, dtype=torch.int64, device=device)
 
-                pred_delta = model(modal_data, modal_types).cpu().detach().numpy()[0] * MAX_SNAP_GPS_DISTANCE
+                pred_delta = model(modal_data, modal_types).cpu().detach().numpy()[0]
 
                 position_errors.append(np.linalg.norm(gt_position_change - pred_delta))
 

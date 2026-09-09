@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 class PositioningTrainingConfig(BaseModel):
 
     # Log a message to the cli output every 50k steps on the current window of training
-    log_every_n_steps: int = Field(50_000, description="Log a message to the cli output every 50k steps on the current window of training")
+    log_every_n_steps: int = Field(100_000, description="Log a message to the cli output every 50k steps on the current window of training")
 
     # Save the model weights every 50_000 steps
     checkpoint_every_n_steps: int | None = Field(50_000, description="Save the model weights every 50_000 steps")
@@ -12,7 +12,7 @@ class PositioningTrainingConfig(BaseModel):
     train_every_n_steps: int | None = 32
 
     # max number of training steps
-    max_steps: int = Field(750_000, description="max number of training steps")
+    max_steps: int = Field(500_000, description="max number of training steps")
 
     # The number of samplers per update
     mini_batch_size: int = Field(256, description="The number of samplers per update")
