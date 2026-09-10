@@ -42,7 +42,7 @@ INITIAL_TRAIN_SIZE = 500  # used to accumulate data for normalisation
 RANDOM_SEED = 42
 
 
-EXPERIMENT_TAG = "all 8"
+EXPERIMENT_TAG = "all 9"
 
 
 # instead, sample more items, but only train on the items where the error is larger. so it becomes a sort of heirstic search. doing so means we're not wasting cycles train pointeless data.
@@ -105,8 +105,8 @@ if __name__ == "__main__":
     for _ in range(100):
         config.training.actual_snap_distance = random.randint(2, 5)
         config.training.learning_rate = random.choice([4e-4, 5e-4, 6e-4, 7e-4, 8e-4])
-        config.training.max_gps_snap_distance = random.randint(2, 5)
-        config.model.embedding_size = random.choice([32, 48, 64, 80, 96])
+        config.training.max_gps_snap_distance = random.random() + 1 * 3
+        config.model.embedding_size = random.randint(32, 96)
         config.training.n_environments = random.randint(3, 12)
         config.training.mini_batch_size = random.randint(16, 384)
         config.training.gaussian_noise_factor = random.random() * 0.12 + 0.02
@@ -237,6 +237,19 @@ if __name__ == "__main__":
                         np.mean(magnitudes)
                     ))
 
+                elif (step + 1) % config.training.eval_every_n_steps == 0:
+                    eval = perform_evals(
+                        config=config,
+                        episodes=load_episodes(config, "testing"),
+                        model=model,
+                        bounds=bounds,
+                    )
+
+                    mlflow.log_metrics({
+                        "mean_position_error": eval["mean_position_error"],
+                        "mean_final_position_error": eval["mean_final_position_error"],
+                    }, step=step)
+
                 elif step % 50 == 0:
                     print("\r{} Mean Step {:.5f} Loss {:.5f} MB mag: {:.5f}".format(
                         step,
@@ -245,18 +258,6 @@ if __name__ == "__main__":
                         np.mean(magnitudes) if magnitudes else 0.0
                         # buffer.mean_loss()
                     ), end="")
-
-            eval = perform_evals(
-                config=config,
-                episodes=load_episodes(config, "testing"),
-                model=model,
-                bounds=bounds,
-            )
-
-            mlflow.log_metrics({
-                "mean_position_error": eval["mean_position_error"],
-                "mean_final_position_error": eval["mean_final_position_error"],
-            }, step=step)
 
 
         validate_same_tag()

@@ -73,8 +73,14 @@ def perform_evals(
 
                 position_errors.append(np.linalg.norm(gt_position_change - pred_delta))
 
+                current_pos_old = current_position.copy()
                 current_position = current_position + pred_delta
                 data[-1].position_change = pred_delta
+
+                # Snap to position if GPS than 10m away
+                if np.linalg.norm(step.new_position - current_position) < 10:
+                    current_position = step.new_position
+                    data[-1].position_change = current_position - current_pos_old
 
                 predicted_positions.append(np.array(current_position))
                 true_positions.append(step.new_position)

@@ -9,6 +9,9 @@ class PositioningTrainingConfig(BaseModel):
     # Save the model weights every 50_000 steps
     checkpoint_every_n_steps: int | None = Field(50_000, description="Save the model weights every 50_000 steps")
 
+    # Eval the model weights every 50_000 steps
+    eval_every_n_steps: int | None = Field(250_000, description="Eval the model weights every 250_000 steps")
+
     train_every_n_steps: int | None = 32
 
     # max number of training steps
