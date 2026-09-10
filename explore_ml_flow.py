@@ -15,7 +15,7 @@ if __name__ == "__main__":
     runs_df = mlflow.search_runs(
         experiment_names=["positioning"],
         # filter_string='tags.experiment = "all 5"'
-        filter_string='tags.experiment = "all 6" and metrics.step >= 499999'
+        filter_string='tags.experiment = "all 7"'
     )
 
     # 3. Clean and prepare the data for the decision tree
@@ -38,7 +38,9 @@ if __name__ == "__main__":
 
     # Select the metric you want to use as the target result (y)
     # Example: fitting a tree to understand what drives your 'accuracy' or 'loss'
-    target_metric = "metrics.mean_step_error_window"  # Change to your logged metric name
+    target_metric = "metrics.mean_step_error_window"
+    # target_metric = "metrics.mean_position_error"
+    # target_metric = "metrics.mean_final_position_error"
     y = runs_df[target_metric]
 
     # Fill missing values if any runs failed or skipped logging certain parameters
