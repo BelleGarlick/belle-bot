@@ -104,15 +104,15 @@ if __name__ == "__main__":
 
     for _ in range(100):
         config.training.actual_snap_distance = random.randint(2, 5)
-        config.training.learning_rate = random.choice([4e-4, 5e-4, 6e-4, 7e-4, 8e-4])
+        config.training.learning_rate = 6e-4 + 4e-4 * random.random()
         config.training.max_gps_snap_distance = random.random() + 1 * 3
         config.model.embedding_size = random.randint(32, 96)
         config.training.n_environments = random.randint(3, 12)
         config.training.mini_batch_size = random.randint(16, 384)
-        config.training.gaussian_noise_factor = random.random() * 0.12 + 0.02
+        config.training.gaussian_noise_factor = random.random() * 0.1 + 0.05
         config.training.train_every_n_steps = random.choice([16, 20, 24, 28, 32, 36])
         config.model.sequence_length = random.randint(100, 200)
-        config.training.replay_buffer_size = random.randint(1000, 50_000)
+        config.training.replay_buffer_size = random.randint(10_000, 100_000)
         config.training.learning_rate_gamma = (random.random() * 0.4) + 0.2
 
         clpy.print_values(config)
