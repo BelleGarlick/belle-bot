@@ -212,6 +212,19 @@ if __name__ == "__main__":
                 if terminated:
                     states[env_id] = env.reset(env_id).initial_states[0]
 
+                if (step + 1) % config.training.eval_every_n_steps == 0:
+                    eval = perform_evals(
+                        config=config,
+                        episodes=load_episodes(config, "testing"),
+                        model=model,
+                        bounds=bounds,
+                    )
+
+                    mlflow.log_metrics({
+                        "mean_position_error": eval["mean_position_error"],
+                        "mean_final_position_error": eval["mean_final_position_error"],
+                    }, step=step)
+
                 # Print a status update every x steps
                 if (step + 1) % config.training.log_every_n_steps == 0:
                     mean_step_err = np.mean(episode_step_error)
