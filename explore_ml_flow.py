@@ -15,7 +15,7 @@ if __name__ == "__main__":
     runs_df = mlflow.search_runs(
         experiment_names=["positioning"],
         # filter_string='tags.experiment = "all 5"'
-        filter_string='tags.experiment = "all 9"'
+        filter_string='tags.experiment = "all 10"'
     )
 
     # 3. Clean and prepare the data for the decision tree

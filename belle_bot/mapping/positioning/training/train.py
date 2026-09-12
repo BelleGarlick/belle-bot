@@ -42,12 +42,12 @@ INITIAL_TRAIN_SIZE = 500  # used to accumulate data for normalisation
 RANDOM_SEED = 42
 
 
-EXPERIMENT_TAG = "all 9"
+EXPERIMENT_TAG = "all 11"
 
 
 # instead, sample more items, but only train on the items where the error is larger. so it becomes a sort of heirstic search. doing so means we're not wasting cycles train pointeless data.
 
-device = torch.device('cuda')
+device = torch.device('cuda' if torch.cuda.is_available() else ('mps' if torch.mps.is_available() else 'cpu'))
 
 
 def sample(buffer: ReplayBuffer, idxs: list[int]):
@@ -103,16 +103,16 @@ if __name__ == "__main__":
     bounds = NormalisationBounds().load(bounds_path)
 
     for _ in range(100):
-        config.training.actual_snap_distance = random.randint(2, 5)
+        config.training.actual_snap_distance = random.random() * 2 + 1.5
         config.training.learning_rate = 6e-4 + 4e-4 * random.random()
         config.training.max_gps_snap_distance = random.random() + 1 * 3
-        config.model.embedding_size = random.randint(32, 96)
-        config.training.n_environments = random.randint(3, 12)
+        config.model.embedding_size = random.randint(48, 96)
+        config.training.n_environments = random.randint(5, 15)
         config.training.mini_batch_size = random.randint(16, 384)
-        config.training.gaussian_noise_factor = random.random() * 0.1 + 0.05
-        config.training.train_every_n_steps = random.choice([16, 20, 24, 28, 32, 36])
+        config.training.gaussian_noise_factor = random.random() * 0.1
+        config.training.train_every_n_steps = random.choice([8, 12, 16, 20, 24, 28])
         config.model.sequence_length = random.randint(100, 200)
-        config.training.replay_buffer_size = random.randint(10_000, 100_000)
+        config.training.replay_buffer_size = random.randint(25_000, 100_000)
         config.training.learning_rate_gamma = (random.random() * 0.4) + 0.2
 
         clpy.print_values(config)
