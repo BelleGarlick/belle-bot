@@ -7,7 +7,7 @@ from belle_bot.mapping.positioning.config.positioning_training_config import Pos
 
 class MlFlowConfig(BaseModel):
 
-    endpoint: str = "http://localhost:5000"
+    endpoint: str = "http://houston:5000"
 
 
 class PositioningConfig(BaseModel):

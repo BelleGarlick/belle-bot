@@ -42,7 +42,8 @@ INITIAL_TRAIN_SIZE = 500  # used to accumulate data for normalisation
 RANDOM_SEED = 42
 
 
-EXPERIMENT_TAG = "all 12"
+EXPERIMENT_TAG = "all 13"
+# for 13, make it so any mean position errors < 0.02 get saved so we can replay them
 
 
 # instead, sample more items, but only train on the items where the error is larger. so it becomes a sort of heirstic search. doing so means we're not wasting cycles train pointeless data.
@@ -103,13 +104,13 @@ if __name__ == "__main__":
     bounds = NormalisationBounds().load(bounds_path)
 
     for _ in range(100):
-        config.training.train_every_n_steps = random.randint(16, 32)
-        config.training.n_environments = random.randint(8, 18)
+        config.training.train_every_n_steps = random.randint(20, 32)
+        config.training.n_environments = random.randint(8, 15)
         config.training.actual_snap_distance = random.random() * 2 + 1.5
-        config.training.learning_rate = 6e-4 + 3e-4 * random.random()
+        config.training.learning_rate = 7e-4 + 2e-4 * random.random()
         config.training.max_gps_snap_distance = random.random() + 1 * 3
-        config.model.embedding_size = random.randint(48, 96)
-        config.training.mini_batch_size = random.randint(16, 256)
+        config.model.embedding_size = random.randint(48, 78)
+        config.training.mini_batch_size = random.randint(16, 128)
         config.training.gaussian_noise_factor = random.random() * 0.09 + 0.01
         config.model.sequence_length = random.randint(100, 200)
         config.training.replay_buffer_size = random.randint(25_000, 100_000)
@@ -244,6 +245,10 @@ if __name__ == "__main__":
                         model=model,
                         bounds=bounds,
                     )
+
+                    if eval["mean_position_error"] < 0.029:
+                        model_path = f"model.pt"
+                        torch.save(model.state_dict(), model_path)
 
                     mlflow.log_metrics({
                         "mean_position_error": eval["mean_position_error"],

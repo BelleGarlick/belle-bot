@@ -9,12 +9,10 @@ def softmax(x):
     return e_x / e_x.sum()
 
 
-
 @dataclass
 class TrainingSample:
     model_input: tuple[np.ndarray, np.ndarray]
     target: np.ndarray
-
 
 
 class ReplayBuffer:
