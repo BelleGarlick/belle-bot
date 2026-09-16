@@ -42,7 +42,7 @@ INITIAL_TRAIN_SIZE = 500  # used to accumulate data for normalisation
 RANDOM_SEED = 42
 
 
-EXPERIMENT_TAG = "all 14"
+EXPERIMENT_TAG = "all 15"
 # for 13, make it so any mean position errors < 0.02 get saved so we can replay them
 
 
@@ -104,17 +104,16 @@ if __name__ == "__main__":
     bounds = NormalisationBounds().load(bounds_path)
 
     for _ in range(100):
-        config.training.train_every_n_steps = random.randint(18, 28)
-        config.training.n_environments = random.randint(8, 15)
+        config.training.train_every_n_steps = random.randint(16, 24)
+        config.training.n_environments = random.randint(9, 13)
         config.training.actual_snap_distance = random.random() * 1 + 1.5
-        config.training.learning_rate = 8e-4 + 1e-4 * random.random()
         config.training.max_gps_snap_distance = random.random() + 1 * 3
         config.model.embedding_size = random.randint(42, 64)
-        config.training.mini_batch_size = random.randint(16, 128)
+        config.training.mini_batch_size = random.randint(16, 96)
         config.training.gaussian_noise_factor = random.random() * 0.09 + 0.01
         config.model.sequence_length = random.randint(100, 200)
-        config.training.replay_buffer_size = random.randint(10_000, 75_000)
-        config.training.learning_rate_gamma = (random.random() * 0.2) + 0.3
+        config.training.replay_buffer_size = random.randint(10_000, 50_000)
+        config.training.learning_rate_gamma = (random.random() * 0.2) + 0.4
 
         clpy.print_values(config)
 
@@ -259,7 +258,7 @@ if __name__ == "__main__":
                         bounds=bounds,
                     )
 
-                    if eval["mean_position_error"] < 0.029:
+                    if eval["mean_position_error"] < 0.026:
                         model_path = f"model.pt"
                         torch.save(model.state_dict(), model_path)
 

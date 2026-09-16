@@ -24,7 +24,7 @@ class PositioningTrainingConfig(BaseModel):
     replay_buffer_size: int = Field(10000, description="The max number of items stored in the replay buffer")
 
     # The optimiser learning rate
-    learning_rate: float = Field(1e-4, description="The optimiser learning rate")
+    learning_rate: float = Field(8e-4, description="The optimiser learning rate")
 
     # The rate to which the learning rate decays. lr = lr * (1- (step/max_steps)^gamma)
     learning_rate_gamma: float = Field(0.4, description="The rate to which the learning rate decays. lr = lr * (1- (step/max_steps)^gamma)")
