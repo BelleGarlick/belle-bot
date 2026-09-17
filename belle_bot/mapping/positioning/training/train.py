@@ -26,7 +26,6 @@ from belle_bot.utils.cli import clpy
 #  estimate variance when training
 #  drop sections randomly
 #  create normalisation from some initial steps
-#  rotate the scene
 #  add camera
 #  bspline gps
 #  cli args to trigger training runs
@@ -42,7 +41,7 @@ INITIAL_TRAIN_SIZE = 500  # used to accumulate data for normalisation
 RANDOM_SEED = 42
 
 
-EXPERIMENT_TAG = "all 15"
+EXPERIMENT_TAG = "all 16"
 # for 13, make it so any mean position errors < 0.02 get saved so we can replay them
 
 
@@ -104,16 +103,14 @@ if __name__ == "__main__":
     bounds = NormalisationBounds().load(bounds_path)
 
     for _ in range(100):
-        config.training.train_every_n_steps = random.randint(16, 24)
         config.training.n_environments = random.randint(9, 13)
         config.training.actual_snap_distance = random.random() * 1 + 1.5
         config.training.max_gps_snap_distance = random.random() + 1 * 3
-        config.model.embedding_size = random.randint(42, 64)
-        config.training.mini_batch_size = random.randint(16, 96)
+        config.training.mini_batch_size = random.randint(16, 48)
         config.training.gaussian_noise_factor = random.random() * 0.09 + 0.01
-        config.model.sequence_length = random.randint(100, 200)
-        config.training.replay_buffer_size = random.randint(10_000, 50_000)
-        config.training.learning_rate_gamma = (random.random() * 0.2) + 0.4
+        config.model.sequence_length = random.randint(125, 200)
+        config.training.replay_buffer_size = random.randint(10_000, 40_000)
+        config.training.learning_rate_gamma = (random.random() * 0.1) + 0.5
 
         clpy.print_values(config)
 
