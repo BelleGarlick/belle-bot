@@ -15,6 +15,7 @@ class ModalityEnum(int, Enum):
     PAD = 0
     IMU = 1
     GPS = 2
+    CAMERA = 3
 
 
 @dataclass
@@ -73,9 +74,20 @@ class CameraData:
     frame: np.ndarray
 
     @staticmethod
-    def from_data(timestamp, data):
-        frame = cv2.imdecode(np.frombuffer(base64.b64decode(data['rgb']), np.uint8), cv2.IMREAD_COLOR)
+    def from_data(config, timestamp, data):
+        frame = cv2.imdecode(np.frombuffer(base64.b64decode(data[config.model.camera_type]), np.uint8), cv2.IMREAD_COLOR)
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        # Resize the frame
+        height, width = frame.shape
+        new_height = config.model.camera_height
+        new_width = int(new_height / height * width)
+
+        frame = cv2.resize(
+            frame / 255,
+            (new_width, new_height),
+            interpolation=cv2.INTER_AREA
+        )
 
         return CameraData(
             timestamp=timestamp,

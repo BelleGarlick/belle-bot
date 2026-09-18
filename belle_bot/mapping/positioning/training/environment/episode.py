@@ -10,7 +10,7 @@ import numpy as np
 from houston.client.py.config import HoustonConfig
 from houston.client.py import replays
 from belle_bot.mapping.positioning.config.positioning_config import PositioningConfig
-from belle_bot.mapping.positioning.training.models import GpsPoint, ImuData
+from belle_bot.mapping.positioning.training.models import GpsPoint, ImuData, CameraData
 
 
 def get_replay_file(config: HoustonConfig, replay_id: str):
@@ -32,8 +32,8 @@ def get_replay_file(config: HoustonConfig, replay_id: str):
     return lines.split("\n")
 
 
-def _parse_events(config: HoustonConfig, replay_id: str):
-    lines = get_replay_file(config, replay_id)
+def _parse_events(config: PositioningConfig, replay_id: str):
+    lines = get_replay_file(config.houston, replay_id)
 
     events = []
     for i, line in enumerate(lines):
@@ -50,10 +50,10 @@ def _parse_events(config: HoustonConfig, replay_id: str):
                 events.append(GpsPoint.from_data(timestamp, data))
                 events[-1].name = str(i)
 
-        # if stream == "sensors/camera":
-        #     events.append(
-        #         CameraData.from_data(timestamp, data)
-        #     )
+        if stream == "sensors/camera" and config.model.include_camera:
+            events.append(
+                CameraData.from_data(config, timestamp, data)
+            )
 
         if stream == "sensors/imu":
             events.append(
@@ -150,7 +150,7 @@ class Episode:
 
         self.events: list[tuple[ImuData | GpsPoint, GpsPoint, GpsPoint, GpsPoint, GpsPoint]] = []
 
-        events = _parse_events(config.houston, self.replay_path)
+        events = _parse_events(config, self.replay_path)
         if self.random_subsample:
             events = _subsample_events(events, seed=seed)
 

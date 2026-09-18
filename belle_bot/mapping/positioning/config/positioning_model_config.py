@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -10,3 +12,11 @@ class PositioningModelConfig(BaseModel):
 
     # The max sequence length used in training/eval
     sequence_length: int = Field(100, description="The max sequence length used in training/eval")
+
+    include_camera: bool = False
+
+    camera_height: int = 84
+
+    camera_chunk_size: int = 16
+
+    camera_type: Literal["rgb", "depth"] = "rgb"

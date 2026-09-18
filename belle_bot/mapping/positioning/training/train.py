@@ -28,6 +28,9 @@ from belle_bot.utils.cli import clpy
 #  create normalisation from some initial steps
 #  add camera
 #  bspline gps
+#  train a camera vae for between frame differences. input -> encoding. encoding + input -> output. the output loss should be the mse delta + the delta between the first few layers of the encoder model
+#  for camera consider adding the delta betwen the current and last
+#  for camera consider adding depthc frame instead
 #  cli args to trigger training runs
 #  add testing set here
 
@@ -41,7 +44,7 @@ INITIAL_TRAIN_SIZE = 500  # used to accumulate data for normalisation
 RANDOM_SEED = 42
 
 
-EXPERIMENT_TAG = "all 16"
+EXPERIMENT_TAG = "all 17"
 # for 13, make it so any mean position errors < 0.02 get saved so we can replay them
 
 
@@ -103,14 +106,14 @@ if __name__ == "__main__":
     bounds = NormalisationBounds().load(bounds_path)
 
     for _ in range(100):
-        config.training.n_environments = random.randint(9, 13)
+        config.training.n_environments = random.randint(8, 11)
         config.training.actual_snap_distance = random.random() * 1 + 1.5
         config.training.max_gps_snap_distance = random.random() + 1 * 3
         config.training.mini_batch_size = random.randint(16, 48)
-        config.training.gaussian_noise_factor = random.random() * 0.09 + 0.01
+        config.training.gaussian_noise_factor = random.random() * 0.08 + 0.05
         config.model.sequence_length = random.randint(125, 200)
-        config.training.replay_buffer_size = random.randint(10_000, 40_000)
-        config.training.learning_rate_gamma = (random.random() * 0.1) + 0.5
+        config.training.replay_buffer_size = random.randint(20_000, 45_000)
+        config.training.learning_rate_gamma = (random.random() * 0.05) + 0.5
 
         clpy.print_values(config)
 
@@ -154,7 +157,7 @@ if __name__ == "__main__":
                     g['lr'] = config.training.learning_rate * scale
 
                 # Process and create the model input to what the target change should be then predict the position for it
-                modality_data, modality_types = process_state(states[env_id], seq_length=config.model.sequence_length, normalisation_bounds=bounds)
+                modality_data, modality_types = process_state(config, states[env_id], normalisation_bounds=bounds)
                 with torch.no_grad():
                     predicted_position_change = model(
                         torch.tensor(modality_data, device=device, dtype=torch.float32),
@@ -255,7 +258,7 @@ if __name__ == "__main__":
                         bounds=bounds,
                     )
 
-                    if eval["mean_position_error"] < 0.026:
+                    if eval["mean_position_error"] < 0.025:
                         model_path = f"model.pt"
                         torch.save(model.state_dict(), model_path)
 

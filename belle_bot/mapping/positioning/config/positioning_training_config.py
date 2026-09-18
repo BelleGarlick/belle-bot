@@ -15,7 +15,7 @@ class PositioningTrainingConfig(BaseModel):
     train_every_n_steps: int | None = 24
 
     # max number of training steps
-    max_steps: int = Field(1_500_000, description="max number of training steps")
+    max_steps: int = Field(2_000_000, description="max number of training steps")
 
     # The number of samplers per update
     mini_batch_size: int = Field(256, description="The number of samplers per update")

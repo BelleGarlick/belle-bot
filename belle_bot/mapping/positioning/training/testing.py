@@ -24,8 +24,6 @@ def perform_evals(
         bounds: NormalisationBounds,
         plot: bool = False
 ):
-    device = torch.device('cuda')
-
     position_errors = []
     final_position_errors = []
 
@@ -64,8 +62,9 @@ def perform_evals(
                     time_delta=step.delta_time
                 ))
 
-                modal_data_np, modal_types_np = process_state(data, config.model.sequence_length, bounds)
+                modal_data_np, modal_types_np = process_state(config, data, bounds)
 
+                device = next(model.parameters()).device
                 modal_data = torch.tensor(modal_data_np, dtype=torch.float32, device=device)
                 modal_types = torch.tensor(modal_types_np, dtype=torch.int64, device=device)
 

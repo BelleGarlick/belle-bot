@@ -5,9 +5,6 @@ from belle_bot.mapping.positioning.config.positioning_model_config import Positi
 from belle_bot.mapping.positioning.training.models import ModalityEnum
 
 
-device = torch.device('mps')
-
-
 class PositionalModelling(nn.Module):
     def __init__(self, max_feature_dim, config: PositioningModelConfig, out_scale=1):
         super().__init__()
@@ -16,6 +13,7 @@ class PositionalModelling(nn.Module):
         # Distinct projection layers for each modality
         self.imu_proj = nn.Linear(max_feature_dim, config.embedding_size)
         self.gps_proj = nn.Linear(max_feature_dim, config.embedding_size)
+        self.cam_proj = nn.Linear(max_feature_dim, config.embedding_size)
 
         # Learnable indicator embeddings for each modality type
         self.modality_embed = nn.Embedding(3, config.embedding_size)  # 0: pad, 1: imu, 2: gps
@@ -35,11 +33,13 @@ class PositionalModelling(nn.Module):
 
         imu_mask = torch.where(modality_ids == ModalityEnum.IMU, 1, 0).to(dtype=merged_seq.dtype, device=modality_ids.device).unsqueeze(-1)
         gps_mask = torch.where(modality_ids == ModalityEnum.GPS, 1, 0).to(dtype=merged_seq.dtype, device=modality_ids.device).unsqueeze(-1)
+        cam_mask = torch.where(modality_ids == ModalityEnum.CAMERA, 1, 0).to(dtype=merged_seq.dtype, device=modality_ids.device).unsqueeze(-1)
 
         # embed and create the various projections
         imu_projection = self.imu_proj(merged_seq)
         gps_projection = self.gps_proj(merged_seq)
-        x = imu_projection * imu_mask + gps_projection * gps_mask
+        cam_projection = self.cam_proj(merged_seq)
+        x = imu_projection * imu_mask + gps_projection * gps_mask + cam_projection * cam_mask
 
         # add modality embedding and time embedding
         x = x + self.modality_embed(modality_ids)
