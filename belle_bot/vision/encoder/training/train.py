@@ -24,7 +24,7 @@ loss_fn = VaeLoss().to(DEVICE)
 
 train_dataset, test_dataset = load_dataset(config, DEVICE)
 
-def sample_model(train_dl, test_dl):
+def sample_model(step, train_dl, test_dl):
     model.eval()
     with torch.no_grad():
         # Get one batch from train and test
@@ -49,7 +49,8 @@ def sample_model(train_dl, test_dl):
             plt.figure(figsize=(12, 6))
             plt.title(f"Reconstructions ({name})")
             plt.imshow(np.clip(row, 0, 1))
-            plt.show()
+            plt.savefig(f"training_plot_{step}_{name}.png")
+            plt.close()
 
 
 if __name__ == "__main__":
@@ -124,4 +125,4 @@ if __name__ == "__main__":
                     torch.save(model.state_dict(), model_path)
 
                     # Print some example outputs
-                    sample_model(train_dataset, test_dataset)
+                    sample_model(step, train_dataset, test_dataset)
