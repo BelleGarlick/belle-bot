@@ -120,5 +120,8 @@ if __name__ == "__main__":
                         "val_loss": np.mean(epoch_loss_val),
                     }, step=step + 1)
 
+                    model_path = f"model-{step + 1}.pt"
+                    torch.save(model.state_dict(), model_path)
+
                     # Print some example outputs
                     sample_model(train_dataset, test_dataset)
