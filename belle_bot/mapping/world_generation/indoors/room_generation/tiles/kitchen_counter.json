@@ -1,0 +1,8 @@
+{
+  "id": "furniture/kitchen_counter",
+  "name": "Kitchen Counter",
+  "spawnable": true,
+  "layouts": ["1u", "2u"],
+  "next_to_wall": true,
+  "weight": 1.5
+}

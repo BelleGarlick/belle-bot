@@ -1,0 +1,8 @@
+{
+  "id": "furniture/fridge",
+  "name": "Fridge",
+  "spawnable": true,
+  "layouts": ["1u"],
+  "next_to_wall": true,
+  "weight": 0.5
+}

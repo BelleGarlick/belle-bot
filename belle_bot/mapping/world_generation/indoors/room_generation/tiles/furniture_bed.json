@@ -1,0 +1,8 @@
+{
+  "id": "furniture/bed",
+  "name": "Bed",
+  "spawnable": true,
+  "next_to_wall": true,
+  "layouts": ["2x2", "2u"],
+  "weight": 1
+}

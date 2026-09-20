@@ -1,0 +1,9 @@
+{
+  "id": "furniture/tv",
+  "name": "TV",
+  "spawnable": true,
+  "next_to_wall": true,
+  "layouts": ["2u"],
+  "weight": 1,
+  "max_per_room": 1
+}

@@ -1,0 +1,8 @@
+{
+  "id": "furniture/towel_rack",
+  "name": "Towel Rack",
+  "spawnable": true,
+  "layouts": ["1u"],
+  "next_to_wall": true,
+  "weight": 0.3
+}

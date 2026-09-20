@@ -1,9 +1,11 @@
+import random
 import uuid
 from dataclasses import dataclass
 
 import numpy as np
+from mpmath import rand
 
-from belle_bot.mapping.world_generation.inside_generation.rooms_layout_generation.models import Point, RoomDefinition
+from belle_bot.mapping.world_generation.indoors.rooms_layout_generation.models import Point, RoomDefinition
 
 
 @dataclass
@@ -19,11 +21,11 @@ class Node:
 
     @property
     def width(self) -> float:
-        return self.br.x - self.tl.x
+        return abs(self.br.x - self.tl.x)
 
     @property
     def height(self) -> float:
-        return self.br.y - self.tl.y
+        return abs(self.br.y - self.tl.y)
 
     def __hash__(self) -> int:
         return hash((self.tl, self.br))
@@ -55,8 +57,8 @@ class Node:
         and a random factor.
         """
         split = float(np.random.normal(0.5, 0.1))
-        # sample based on longest side
 
+        # sample based on longest side
         if np.random.normal(0.5, 0.1) * (self.width + self.height) > self.width:
             # split vert
             split = self.tl.y + (self.br.y - self.tl.y) * split
@@ -94,8 +96,8 @@ def generate_room_layout(width: float, height: float) -> list[RoomDefinition]:
         A list of RoomDefinition objects representing the generated rooms.
     """
     building = Node(
-        tl=Point(0, 0),
-        br=Point(width, height),
+        tl=Point(0, height),
+        br=Point(width, 0),
     )
 
     # todo scale rooms with size of building

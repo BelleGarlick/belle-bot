@@ -1,0 +1,8 @@
+{
+  "id": "furniture/sofa",
+  "name": "Sofa",
+  "spawnable": true,
+  "layouts": ["2u", "3u"],
+  "next_to_wall": true,
+  "weight": 1
+}

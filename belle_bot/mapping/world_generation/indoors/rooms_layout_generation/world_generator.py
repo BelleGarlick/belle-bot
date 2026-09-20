@@ -1,9 +1,9 @@
 from matplotlib import pyplot as plt
 
-from belle_bot.mapping.world_generation.inside_generation.rooms_layout_generation.rooms_layout_generator import generate_room_layout
-from belle_bot.mapping.world_generation.inside_generation.rooms_layout_generation.graph_utils import create_room_graph, drop_rooms, create_door_graph, populate_doors
-from belle_bot.mapping.world_generation.inside_generation.rooms_layout_generation.window_generator import get_window_candidates, populate_windows
-from belle_bot.mapping.world_generation.inside_generation.rooms_layout_generation.models import RoomDefinition
+from belle_bot.mapping.world_generation.indoors.rooms_layout_generation.rooms_layout_generator import generate_room_layout
+from belle_bot.mapping.world_generation.indoors.rooms_layout_generation.graph_utils import create_room_graph, drop_rooms, create_door_graph, populate_doors
+from belle_bot.mapping.world_generation.indoors.rooms_layout_generation.window_generator import get_window_candidates, populate_windows
+from belle_bot.mapping.world_generation.indoors.rooms_layout_generation.models import RoomDefinition
 
 def generate_rooms_layout(
     width: float = 100,

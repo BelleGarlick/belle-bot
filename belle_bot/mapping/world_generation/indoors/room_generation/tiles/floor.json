@@ -1,0 +1,7 @@
+{
+  "id": "floor",
+  "name": "Floor",
+  "spawnable": true,
+  "neighbours": ["*"],
+  "weight": 2
+}

@@ -1,0 +1,8 @@
+{
+  "id": "furniture/toaster",
+  "name": "Toaster",
+  "spawnable": true,
+  "layouts": ["1u"],
+  "next_to_wall": true,
+  "weight": 0.3
+}

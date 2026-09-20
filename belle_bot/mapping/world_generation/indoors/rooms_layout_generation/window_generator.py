@@ -1,6 +1,6 @@
 import numpy as np
 
-from belle_bot.mapping.world_generation.inside_generation.rooms_layout_generation.models import RoomDefinition, Point, \
+from belle_bot.mapping.world_generation.indoors.rooms_layout_generation.models import RoomDefinition, Point, \
     Window
 
 

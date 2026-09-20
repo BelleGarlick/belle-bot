@@ -1,0 +1,8 @@
+{
+  "id": "furniture/laundry_basket",
+  "name": "Laundry Basket",
+  "spawnable": true,
+  "layouts": ["1u"],
+  "next_to_wall": false,
+  "weight": 0.3
+}

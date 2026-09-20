@@ -1,0 +1,8 @@
+{
+  "id": "furniture/dining_chair",
+  "name": "Dining Chair",
+  "spawnable": true,
+  "layouts": ["1u"],
+  "next_to_wall": false,
+  "weight": 1.0
+}

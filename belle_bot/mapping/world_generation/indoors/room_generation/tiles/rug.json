@@ -1,0 +1,8 @@
+{
+  "id": "furniture/rug",
+  "name": "Rug",
+  "spawnable": true,
+  "layouts": ["2x2", "2u"],
+  "next_to_wall": false,
+  "weight": 0.5
+}

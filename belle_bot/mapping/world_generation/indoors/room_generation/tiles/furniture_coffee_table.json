@@ -1,0 +1,8 @@
+{
+  "id": "furniture/coffee_table",
+  "name": "Coffee Tbl",
+  "spawnable": true,
+  "layouts": ["2u"],
+  "weight": 1,
+  "max_per_room": 1
+}

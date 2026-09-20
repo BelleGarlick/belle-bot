@@ -5,12 +5,12 @@ from typing import Any
 
 import numpy as np
 
-from belle_bot.mapping.world_generation.inside_generation.rooms_layout_generation.models import (
+from belle_bot.mapping.world_generation.indoors.rooms_layout_generation.models import (
     RoomDefinition,
     Door,
     Point
 )
-from belle_bot.mapping.world_generation.inside_generation.rooms_layout_generation.utils import (
+from belle_bot.mapping.world_generation.indoors.rooms_layout_generation.utils import (
     get_edge_overlap,
     get_line_length
 )

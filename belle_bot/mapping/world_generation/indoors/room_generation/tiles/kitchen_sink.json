@@ -1,0 +1,8 @@
+{
+  "id": "furniture/kitchen_sink",
+  "name": "Kitchen Sink",
+  "spawnable": true,
+  "layouts": ["1u"],
+  "next_to_wall": true,
+  "weight": 0.5
+}

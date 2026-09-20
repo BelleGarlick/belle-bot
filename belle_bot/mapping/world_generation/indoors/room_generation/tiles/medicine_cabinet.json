@@ -1,0 +1,8 @@
+{
+  "id": "furniture/medicine_cabinet",
+  "name": "Medicine Cabinet",
+  "spawnable": true,
+  "layouts": ["1u"],
+  "next_to_wall": true,
+  "weight": 0.3
+}

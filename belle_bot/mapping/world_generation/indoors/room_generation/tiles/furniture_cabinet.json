@@ -1,0 +1,8 @@
+{
+  "id": "furniture/cabinet",
+  "name": "Cabinet",
+  "spawnable": true,
+  "next_to_wall": true,
+  "layouts": ["2u", "3u"],
+  "weight": 1
+}

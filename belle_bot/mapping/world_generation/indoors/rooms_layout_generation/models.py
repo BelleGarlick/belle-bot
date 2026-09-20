@@ -56,6 +56,14 @@ class RoomDefinition:
         ])
 
     @property
+    def width(self) -> float:
+        return abs(self.br.x - self.tl.x)
+
+    @property
+    def height(self) -> float:
+        return abs(self.br.y - self.tl.y)
+
+    @property
     def top_edge(self) -> np.ndarray:
         return np.array([self.tl.x, self.tl.y, self.br.x, self.tl.y])
 

@@ -1,0 +1,8 @@
+{
+  "id": "furniture/side_table",
+  "name": "Side Table",
+  "spawnable": true,
+  "layouts": ["1u"],
+  "next_to_wall": true,
+  "weight": 0.6
+}
