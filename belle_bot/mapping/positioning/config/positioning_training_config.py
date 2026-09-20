@@ -32,7 +32,7 @@ class PositioningTrainingConfig(BaseModel):
     gaussian_noise_factor: float = 0.3
 
     # The number of parallel environments the agent trains within
-    n_environments: int = Field(1, description="The number of parallel environments the agent trains within")
+    n_environments: int = Field(10, description="The number of parallel environments the agent trains within")
 
     # If true, the full window will not be used, only a subsequence of the replay
     random_subsample: bool = Field(True, description="If true, the full window will not be used, only a subsequence of the replay")

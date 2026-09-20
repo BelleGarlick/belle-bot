@@ -44,7 +44,7 @@ INITIAL_TRAIN_SIZE = 500  # used to accumulate data for normalisation
 RANDOM_SEED = 42
 
 
-EXPERIMENT_TAG = "all 17"
+EXPERIMENT_TAG = "all 18"
 # for 13, make it so any mean position errors < 0.02 get saved so we can replay them
 
 
@@ -106,14 +106,13 @@ if __name__ == "__main__":
     bounds = NormalisationBounds().load(bounds_path)
 
     for _ in range(100):
-        config.training.n_environments = random.randint(8, 11)
-        config.training.actual_snap_distance = random.random() * 1 + 1.5
-        config.training.max_gps_snap_distance = random.random() + 1 * 3
-        config.training.mini_batch_size = random.randint(16, 48)
-        config.training.gaussian_noise_factor = random.random() * 0.08 + 0.05
-        config.model.sequence_length = random.randint(125, 200)
-        config.training.replay_buffer_size = random.randint(20_000, 45_000)
-        config.training.learning_rate_gamma = (random.random() * 0.05) + 0.5
+        config.training.actual_snap_distance = random.random() * 0.8 + 1.7
+        config.training.max_gps_snap_distance = random.random() + 0.8 * 3.5
+        config.training.mini_batch_size = random.randint(24, 40)
+        config.training.gaussian_noise_factor = random.random() * 0.05 + 0.075
+        config.model.sequence_length = random.randint(145, 180)
+        config.training.replay_buffer_size = random.randint(25_000, 40_000)
+        config.training.learning_rate_gamma = (random.random() * 0.04) + 0.525
 
         clpy.print_values(config)
 
@@ -250,7 +249,7 @@ if __name__ == "__main__":
                         np.mean(magnitudes)
                     ))
 
-                elif (step + 1) % config.training.eval_every_n_steps == 0:
+                elif (step + 1) % config.eval_every_n_steps == 0:
                     eval = perform_evals(
                         config=config,
                         episodes=load_episodes(config, "testing"),
