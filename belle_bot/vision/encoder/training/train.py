@@ -9,17 +9,17 @@ import numpy as np
 import torch
 
 from belle_bot.utils.cli import clpy
-from belle_bot.vision.encoder.config.vision_encoder_config import VisionEncoderConfig
+from belle_bot.vision.encoder.config.vision_encoder_training_config import VisionEncoderTrainingConfig
 from belle_bot.vision.encoder.training.data_loader import load_dataset
 from belle_bot.vision.encoder.training.loss import VaeLoss
 from belle_bot.vision.encoder.training.ml_model import VAE
 
 DEVICE = torch.device('mps' if torch.backends.mps.is_available() else ('cuda' if torch.cuda.is_available() else 'cpu'))
 
-config = clpy.parse_cli_args(VisionEncoderConfig())
+config = clpy.parse_cli_args(VisionEncoderTrainingConfig())
 
 model = VAE(latent_dim=config.model.embedding_size).to(DEVICE)
-optimizer = torch.optim.AdamW(model.parameters(), lr=config.training.learning_rate)
+optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
 loss_fn = VaeLoss().to(DEVICE)
 
 train_dataset, test_dataset = load_dataset(config, DEVICE)
@@ -66,16 +66,16 @@ if __name__ == "__main__":
 
         epoch_loss_train = deque(maxlen=1000)
         for step, (batch, ) in enumerate(train_dl):
-            if step >= config.training.max_steps:
+            if step >= config.max_steps:
                 break
 
-            percentage_complete = step / config.training.max_steps
+            percentage_complete = step / config.max_steps
             percentage_remaining = 1 - percentage_complete
 
             # scale the learning rate through training
-            scale = 1 - math.pow(percentage_remaining, config.training.learning_rate_gamma)
+            scale = 1 - math.pow(percentage_remaining, config.learning_rate_gamma)
             for g in optimizer.param_groups:
-                g['lr'] = config.training.learning_rate * scale
+                g['lr'] = config.learning_rate * scale
 
             model.train()
             optimizer.zero_grad()
@@ -92,7 +92,7 @@ if __name__ == "__main__":
             epoch_loss_train.append(loss.item())
             print(f"\rStep: {step}. Loss: {np.mean(epoch_loss_train):.5f}", end="")
 
-            if (step + 1) % config.training.eval_every_n_steps == 0:
+            if (step + 1) % config.eval_every_n_steps == 0:
                 epoch_loss_val = []
                 model.eval()
 
@@ -121,8 +121,9 @@ if __name__ == "__main__":
                         "val_loss": np.mean(epoch_loss_val),
                     }, step=step + 1)
 
-                    model_path = f"model-{step + 1}.pt"
-                    torch.save(model.state_dict(), model_path)
-
                     # Print some example outputs
                     sample_model(step, train_dataset, test_dataset)
+
+            if (step + 1) % config.checkpoint_every_n_steps == 0:
+                model_path = f"model-{step + 1}.pt"
+                torch.save(model.state_dict(), model_path)

@@ -23,7 +23,6 @@ def preprocess(image, device, jitter=False):
             T.RandomResizedCrop(224, scale=(0.8, 1.0)),
             T.RandomHorizontalFlip(),
             T.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
-            T.RandomGrayscale(p=0.1),
             T.ToTensor(),
         ])
     else:

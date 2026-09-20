@@ -47,7 +47,7 @@ def to_dict(config: Union[BaseModel, dict]) -> dict:
     return flatten(config)
 
 
-def parse_cli_args(default_args):
+def parse_cli_args[T](default_args: T) -> T:
     print(sys.argv)
 
     args_dict = {}

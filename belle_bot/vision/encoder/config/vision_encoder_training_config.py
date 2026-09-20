@@ -1,18 +1,23 @@
 from pydantic import BaseModel, Field
 
+from belle_bot.mapping.positioning.config.positioning_config import MlFlowConfig
+from belle_bot.vision.encoder.config.vision_encoder_model_config import VisionEncoderModelConfig
+from houston.client.py.config import HoustonConfig
+
 
 class VisionEncoderTrainingConfig(BaseModel):
 
-    # # Log a message to the cli output every 50k steps on the current window of training
-    # log_every_n_steps: int = Field(50_000, description="Log a message to the cli output every 50k steps on the current window of training")
-    #
-    # # Save the model weights every 50_000 steps
-    # checkpoint_every_n_steps: int | None = Field(50_000, description="Save the model weights every 50_000 steps")
+    model: VisionEncoderModelConfig = VisionEncoderModelConfig()
+
+    mlflow: MlFlowConfig = MlFlowConfig()
+
+    houston: HoustonConfig = HoustonConfig()
+
+    # Save the model weights every 50_000 steps
+    checkpoint_every_n_steps: int | None = Field(50_000, description="Save the model weights every 50_000 steps")
 
     # Eval the model weights every 50_000 steps
     eval_every_n_steps: int | None = Field(10_000, description="Eval the model weights every 250_000 steps")
-
-    # train_every_n_steps: int | None = 24
 
     # max number of training steps
     max_steps: int = Field(100_000, description="max number of training steps")
