@@ -31,4 +31,4 @@ class VisionEncoderTrainingConfig(BaseModel):
     # The rate to which the learning rate decays. lr = lr * (1- (step/max_steps)^gamma)
     learning_rate_gamma: float = Field(0.4, description="The rate to which the learning rate decays. lr = lr * (1- (step/max_steps)^gamma)")
 
-    kl_annealing: float = 0.1
+    kl_annealing: float = 0.03

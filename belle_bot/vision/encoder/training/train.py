@@ -82,7 +82,7 @@ if __name__ == "__main__":
 
             # Feed through model & compute loss
             recon_images, mu, logvar = model(batch)
-            loss = loss_fn(recon_images, batch, mu, logvar, kl_beta_annealing=percentage_remaining * config.training.kl_annealing)['loss']
+            loss = loss_fn(recon_images, batch, mu, logvar, kl_beta=percentage_remaining * config.kl_annealing)['loss']
 
             # Train the model
             loss.backward()
@@ -108,7 +108,7 @@ if __name__ == "__main__":
                             break
 
                         recon_images, mu, logvar = model(batch)
-                        loss = loss_fn(recon_images, batch, mu, logvar, kl_beta_annealing=percentage_remaining * config.training.kl_annealing)['loss']
+                        loss = loss_fn(recon_images, batch, mu, logvar, kl_beta=percentage_remaining * config.kl_annealing)['loss']
 
                         epoch_loss_val.append(loss.item())
                         val_samples_collected += batch.shape[0]
