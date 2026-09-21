@@ -1,5 +1,4 @@
 import uuid
-import random
 import heapq
 from typing import Any
 
@@ -131,7 +130,7 @@ def drop_rooms(
         A tuple of (updated rooms list, updated room graph).
     """
     rooms_to_try = list(rooms)
-    random.shuffle(rooms_to_try)
+    np.random.shuffle(rooms_to_try)
     
     dropped_so_far = 0
     for room in rooms_to_try:
@@ -177,15 +176,15 @@ def create_door_graph(
         return {}
 
     room_ids = list(room_graph.keys())
-    start_node = random.choice(room_ids)
+    start_node: str = np.random.choice(room_ids)
 
-    visited = {start_node}
+    visited: set[str] = {start_node}
     door_graph = {room_id: set() for room_id in room_ids}
 
     # Edges are (weight, from_node, to_node)
     edges = []
     for neighbor in room_graph[start_node]:
-        edges.append((random.random(), start_node, neighbor))
+        edges.append((np.random.random(), start_node, neighbor))
 
     heapq.heapify(edges)
 
@@ -201,13 +200,13 @@ def create_door_graph(
 
         for next_neighbor in room_graph[v]:
             if next_neighbor not in visited:
-                heapq.heappush(edges, (random.random(), v, next_neighbor))
+                heapq.heappush(edges, (np.random.random(), v, next_neighbor))
 
     # Add random extra doors
     for u in room_graph:
         for v in room_graph[u]:
             if v not in door_graph[u]:
-                if random.random() < extra_door_probability:
+                if np.random.random() < extra_door_probability:
                     door_graph[u].add(v)
                     door_graph[v].add(u)
 

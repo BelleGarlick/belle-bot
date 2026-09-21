@@ -1,4 +1,5 @@
 {
   "id": "wall/window",
-  "name": "Window"
+  "name": "Window",
+  "spawnable": false
 }

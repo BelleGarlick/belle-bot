@@ -1,4 +1,5 @@
 {
   "id": "wall/door",
-  "name": "Door"
+  "name": "Door",
+  "spawnable": false
 }

@@ -1,6 +1,6 @@
 {
   "id": "furniture/dining_chair",
-  "name": "Dining Chair",
+  "name": "Din. Chair",
   "spawnable": true,
   "layouts": ["1u"],
   "next_to_wall": false,

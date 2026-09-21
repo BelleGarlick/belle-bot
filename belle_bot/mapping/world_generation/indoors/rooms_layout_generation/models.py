@@ -47,6 +47,13 @@ class RoomDefinition:
     doors: List[Door]
     windows: List[Window]
 
+    # Added to store generated contents
+    objects: List[dict] = None
+
+    def __post_init__(self):
+        if self.objects is None:
+            self.objects = []
+
     @property
     def center(self) -> np.ndarray:
         """Returns the center point of the room as a numpy array [x, y]."""

@@ -1,9 +1,7 @@
-import random
 import uuid
 from dataclasses import dataclass
 
 import numpy as np
-from mpmath import rand
 
 from belle_bot.mapping.world_generation.indoors.rooms_layout_generation.models import Point, RoomDefinition
 
@@ -16,8 +14,8 @@ class Node:
     tl: Point
     br: Point
 
-    left: Node | None = None
-    right: Node | None = None
+    left: "Node | None" = None
+    right: "Node | None" = None
 
     @property
     def width(self) -> float:

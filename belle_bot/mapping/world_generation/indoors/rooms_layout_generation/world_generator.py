@@ -86,6 +86,26 @@ def render_rooms_layout(rooms: list[RoomDefinition]) -> None:
         for window in leaf.windows:
             plt.scatter(window.position.x, window.position.y, color='gold', marker='*', s=30, zorder=3)
 
+        # Render objects
+        for obj in leaf.objects:
+            plt.scatter(
+                obj['position'].x,
+                obj['position'].y,
+                color='green',
+                marker='o',
+                s=15,
+                zorder=2,
+                alpha=0.6
+            )
+            plt.text(
+                obj['position'].x,
+                obj['position'].y,
+                obj['tile']['name'],
+                fontsize=6,
+                ha='center',
+                va='bottom'
+            )
+
     for connection in door_connections:
         room_i, room_j = connection
         if room_i in room_map and room_j in room_map:
