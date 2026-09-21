@@ -249,23 +249,6 @@ if __name__ == "__main__":
                         np.mean(magnitudes)
                     ))
 
-                elif (step + 1) % config.eval_every_n_steps == 0:
-                    eval = perform_evals(
-                        config=config,
-                        episodes=load_episodes(config, "testing"),
-                        model=model,
-                        bounds=bounds,
-                    )
-
-                    if eval["mean_position_error"] < 0.025:
-                        model_path = f"model.pt"
-                        torch.save(model.state_dict(), model_path)
-
-                    mlflow.log_metrics({
-                        "mean_position_error": eval["mean_position_error"],
-                        "mean_final_position_error": eval["mean_final_position_error"],
-                    }, step=step)
-
                 elif step % 50 == 0:
                     print("\r{} Mean Step {:.5f} Loss {:.5f} MB mag: {:.5f}".format(
                         step,

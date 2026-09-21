@@ -11,7 +11,6 @@ from belle_bot.mapping.positioning.training.environment.preprocessor import proc
 from belle_bot.mapping.positioning.training.ml_model import PositionalModelling
 from belle_bot.mapping.positioning.training.models import GpsPoint
 from belle_bot.mapping.positioning.training.normalisation import NormalisationBounds
-from belle_bot.mapping.positioning.training.seeding import set_seed
 
 
 # todo change to in memory state to feed in one at a time
@@ -105,7 +104,6 @@ def perform_evals(
 
 
 if __name__ == "__main__":
-    set_seed(42)
     device = torch.device('mps')
 
     model = PositionalModelling(13, 256, n_layers=2).to(device)
