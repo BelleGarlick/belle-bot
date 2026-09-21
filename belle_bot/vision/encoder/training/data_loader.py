@@ -54,7 +54,7 @@ def load_dataset(config, devjce):
         .decode(custom_decoder)
         .to_tuple("jpg")
         .map_tuple(lambda x: preprocess(x, devjce, jitter=True))
-        .batched(config.training.mini_batch_size)
+        .batched(config.mini_batch_size)
     )
 
     test_dataset = (
@@ -63,7 +63,7 @@ def load_dataset(config, devjce):
         .decode(custom_decoder)
         .to_tuple("jpg")
         .map_tuple(lambda x: preprocess(x, devjce, jitter=False))
-        .batched(config.training.mini_batch_size)
+        .batched(config.mini_batch_size)
     )
 
     return train_dataset, test_dataset

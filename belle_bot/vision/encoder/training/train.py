@@ -1,5 +1,4 @@
 import math
-import uuid
 from collections import deque
 
 import matplotlib.pyplot as plt
@@ -11,16 +10,16 @@ import torch
 from belle_bot.utils.cli import clpy
 from belle_bot.vision.encoder.config.vision_encoder_training_config import VisionEncoderTrainingConfig
 from belle_bot.vision.encoder.training.data_loader import load_dataset
-from belle_bot.vision.encoder.training.loss import VaeLoss
-from belle_bot.vision.encoder.training.ml_model import VAE
+from belle_bot.vision.encoder.training.loss import OptimizedVaeLoss
+from belle_bot.vision.encoder.training.ml_model import VAE, OptimizedVAE
 
 DEVICE = torch.device('mps' if torch.backends.mps.is_available() else ('cuda' if torch.cuda.is_available() else 'cpu'))
 
 config = clpy.parse_cli_args(VisionEncoderTrainingConfig())
 
-model = VAE(latent_dim=config.model.embedding_size).to(DEVICE)
+model = OptimizedVAE(latent_dim=config.model.embedding_size).to(DEVICE)
 optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
-loss_fn = VaeLoss().to(DEVICE)
+loss_fn = OptimizedVaeLoss().to(DEVICE)
 
 train_dataset, test_dataset = load_dataset(config, DEVICE)
 
@@ -49,7 +48,7 @@ def sample_model(step, train_dl, test_dl):
             plt.figure(figsize=(12, 6))
             plt.title(f"Reconstructions ({name})")
             plt.imshow(np.clip(row, 0, 1))
-            plt.savefig(f"training_plot_{step}_{name}.png")
+            plt.savefig(f"training_plot_{(step+1)}_{name}.png")
             plt.close()
 
 
@@ -60,7 +59,8 @@ if __name__ == "__main__":
     mlflow.set_tracking_uri(config.mlflow.endpoint)
     mlflow.set_experiment("vision-encoder")
 
-    with mlflow.start_run(run_name=str(uuid.uuid4())):
+    with mlflow.start_run(run_name=str("optimised-vae")):
+    # with mlflow.start_run(run_name=str(uuid.uuid4())):
         mlflow.log_params(clpy.to_dict(config))
         # mlflow.set_tag("experiment", EXPERIMENT_TAG)
 
@@ -82,7 +82,7 @@ if __name__ == "__main__":
 
             # Feed through model & compute loss
             recon_images, mu, logvar = model(batch)
-            loss = loss_fn(recon_images, batch, mu, logvar, kl_beta_annealing=percentage_remaining * config.training.kl_annealing)
+            loss = loss_fn(recon_images, batch, mu, logvar, kl_beta_annealing=percentage_remaining * config.training.kl_annealing)['loss']
 
             # Train the model
             loss.backward()
@@ -108,13 +108,13 @@ if __name__ == "__main__":
                             break
 
                         recon_images, mu, logvar = model(batch)
-                        loss = loss_fn(recon_images, batch, mu, logvar, kl_beta_annealing=percentage_remaining * config.training.kl_annealing)
+                        loss = loss_fn(recon_images, batch, mu, logvar, kl_beta_annealing=percentage_remaining * config.training.kl_annealing)['loss']
 
                         epoch_loss_val.append(loss.item())
                         val_samples_collected += batch.shape[0]
                         print(f"\rValidating. Items: {val_samples_collected}. Loss: {np.mean(epoch_loss_val):.5f}", end="")
 
-                    print(f"\nStep: {step}. Running Loss: {np.mean(epoch_loss_train):.5f} Val Loss: {np.mean(epoch_loss_val):.5f}")
+                    print(f"\rStep: {step}. Running Loss: {np.mean(epoch_loss_train):.5f} Val Loss: {np.mean(epoch_loss_val):.5f}")
 
                     mlflow.log_metrics({
                         "loss": np.mean(epoch_loss_train),
