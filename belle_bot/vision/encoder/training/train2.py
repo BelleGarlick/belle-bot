@@ -19,7 +19,7 @@ DEVICE = torch.device('mps' if torch.backends.mps.is_available() else ('cuda' if
 
 config = clpy.parse_cli_args(VisionEncoderTrainingConfig())
 
-model = VAE(latent_dim=config.model.embedding_size).to(DEVICE)
+model = VAE(img_channels=4, latent_dim=config.model.embedding_size).to(DEVICE)
 optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
 loss_fn = OptimizedVaeLoss().to(DEVICE)
 
@@ -38,19 +38,31 @@ def sample_model(step, train_batch, test_batch):
             y = recon.detach().cpu().numpy()
             x_np = batch.detach().cpu().numpy()
 
-            image_pairs = [
-                np.vstack((
-                    input_image.transpose((1, 2, 0)),
-                    output_image.transpose((1, 2, 0))
-                ))
-                for input_image, output_image in zip(x_np, y)
-            ]
-            row = np.hstack(image_pairs[:4]) # Show 4 pairs
+            # y and x_np are shape (B, 4, 224, 224)
+            # We want to display them. We can stack RGB and Depth vertically or side-by-side.
+            # Let's show RGB and Depth as separate rows for both input and output.
 
-            plt.figure(figsize=(12, 6))
-            plt.title(f"Reconstructions ({name})")
+            image_pairs = []
+            for i in range(min(4, x_np.shape[0])):
+                input_rgb = x_np[i, :3, :, :].transpose((1, 2, 0))
+                input_depth = x_np[i, 3, :, :]
+                output_rgb = y[i, :3, :, :].transpose((1, 2, 0))
+                output_depth = y[i, 3, :, :]
+
+                # Normalize depth for visualization if needed, but it should be 0-1
+                
+                pair = np.vstack((
+                    np.hstack((input_rgb, np.stack([input_depth]*3, axis=-1))),
+                    np.hstack((output_rgb, np.stack([output_depth]*3, axis=-1)))
+                ))
+                image_pairs.append(pair)
+            
+            row = np.hstack(image_pairs)
+
+            plt.figure(figsize=(16, 8))
+            plt.title(f"Reconstructions ({name}) - Left: RGB, Right: Depth | Top: Input, Bottom: Output")
             plt.imshow(np.clip(row, 0, 1))
-            plt.savefig(f"training_plot_{(step+1)}_{name}.png")
+            plt.savefig(f"training_plot_{(step+1)}_{name}_1.1.png")
             plt.close()
 
 
@@ -143,5 +155,5 @@ if __name__ == "__main__":
                         sample_model(step, batch, last_test_batch)
 
             if (step + 1) % config.checkpoint_every_n_steps == 0:
-                model_path = f"model-{step + 1}.pt"
+                model_path = f"model-{step + 1}-1.1.pt"
                 torch.save(model.state_dict(), model_path)

@@ -1,4 +1,3 @@
-import torch
 import torch.nn as nn
 
 class ResidualBlock(nn.Module):
@@ -102,7 +101,6 @@ class VAE(nn.Module):
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 class MBConvBlock(nn.Module):
     """Inverted Residual Block with Depthwise Separable Convolutions and Skip Connections."""
@@ -155,14 +153,12 @@ class OptimizedVAE(nn.Module):
         super().__init__()
         self.latent_dim = latent_dim
 
-        # Stem: Standard Conv for initial RGB feature extraction (224x224 -> 112x112)
         self.stem = nn.Sequential(
             nn.Conv2d(img_channels, 32, kernel_size=3, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(32),
             nn.SiLU(inplace=True)
         )
 
-        # Encoder: Efficient Downsampling
         self.encoder = nn.Sequential(
             MBConvBlock(32, 64, stride=2),    # 112x112 -> 56x56
             MBConvBlock(64, 128, stride=2),   # 56x56   -> 28x28
@@ -170,24 +166,18 @@ class OptimizedVAE(nn.Module):
             MBConvBlock(256, 256, stride=2),  # 14x14   -> 7x7
         )
 
-        # Spatial Pool to drastically cut dense layer parameters
-        self.spatial_pool = nn.AdaptiveAvgPool2d((2, 2)) # 256 x 7 x 7 -> 256 x 2 x 2
-        self.flatten_dim = 256 * 2 * 2                    # 1,024 dimensions (vs 12,544 previously)
+        self.flatten_dim = 256 * 7 * 7 # 12,544 dims
 
-        # Latent Projections
         self.fc_mu = nn.Linear(self.flatten_dim, latent_dim)
         self.fc_logvar = nn.Linear(self.flatten_dim, latent_dim)
 
-        # Decoder Setup
         self.decoder_input = nn.Linear(latent_dim, self.flatten_dim)
-        self.unpool = nn.Upsample(size=(7, 7), mode='bilinear', align_corners=False)
 
-        # Decoder Architecture
         self.decoder = nn.Sequential(
-            UpSampleBlock(256, 256),          # 7x7   -> 14x14
-            UpSampleBlock(256, 128),          # 14x14 -> 28x28
-            UpSampleBlock(128, 64),           # 28x28 -> 56x56
-            UpSampleBlock(64, 32),            # 56x56 -> 112x112
+            UpSampleBlock(256, 256),          # 7x7     -> 14x14
+            UpSampleBlock(256, 128),          # 14x14   -> 28x28
+            UpSampleBlock(128, 64),           # 28x28   -> 56x56
+            UpSampleBlock(64, 32),            # 56x56   -> 112x112
             UpSampleBlock(32, 32),            # 112x112 -> 224x224
             nn.Conv2d(32, img_channels, kernel_size=3, padding=1),
             nn.Sigmoid()
@@ -196,22 +186,10 @@ class OptimizedVAE(nn.Module):
     def encode(self, x):
         h = self.stem(x)
         h = self.encoder(h)
-        h = self.spatial_pool(h)
         h = torch.flatten(h, start_dim=1)
         return self.fc_mu(h), self.fc_logvar(h)
 
-    def reparameterize(self, mu, logvar):
-        std = torch.exp(0.5 * logvar)
-        eps = torch.randn_like(std)
-        return mu + eps * std
-
     def decode(self, z):
         h = self.decoder_input(z)
-        h = h.view(-1, 256, 2, 2)
-        h = self.unpool(h)
+        h = h.view(-1, 256, 7, 7)
         return self.decoder(h)
-
-    def forward(self, x):
-        mu, logvar = self.encode(x)
-        z = self.reparameterize(mu, logvar)
-        return self.decode(z), mu, logvar

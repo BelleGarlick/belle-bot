@@ -23,7 +23,7 @@ class VisionEncoderTrainingConfig(BaseModel):
     max_steps: int = Field(2_000_000, description="max number of training steps")
 
     # The number of samplers per update
-    mini_batch_size: int = Field(16, description="The number of samplers per update")
+    mini_batch_size: int = Field(8, description="The number of samplers per update")
 
     # The optimiser learning rate
     learning_rate: float = Field(1e-3, description="The optimiser learning rate")

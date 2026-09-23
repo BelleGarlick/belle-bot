@@ -35,11 +35,19 @@ class LightweightPerceptualLoss(nn.Module):
         return self
 
     def normalize(self, x):
+        # Only normalize RGB channels if 4 channels are provided
+        if x.shape[1] == 4:
+            rgb = x[:, :3, :, :]
+            return (rgb - self.mean) / self.std
         return (x - self.mean) / self.std
 
     def forward(self, x, y):
-        x_norm = self.normalize(x)
-        y_norm = self.normalize(y)
+        # We only apply perceptual loss to the RGB channels if 4 channels are present
+        x_in = x[:, :3, :, :] if x.shape[1] == 4 else x
+        y_in = y[:, :3, :, :] if y.shape[1] == 4 else y
+        
+        x_norm = self.normalize(x_in)
+        y_norm = self.normalize(y_in)
 
         # Extract features across multiple scales
         h1_x = self.slice1(x_norm)
@@ -51,11 +59,12 @@ class LightweightPerceptualLoss(nn.Module):
         h3_x = self.slice3(h2_x)
         h3_y = self.slice3(h2_y)
 
+        # Weighted loss (heavier on mid-to-high level features)
         loss1 = F.huber_loss(h1_x, h1_y, reduction="mean")
         loss2 = F.huber_loss(h2_x, h2_y, reduction="mean")
         loss3 = F.huber_loss(h3_x, h3_y, reduction="mean")
 
-        return loss1 + loss2 + loss3
+        return 0.2 * loss1 + 0.5 * loss2 + 1.0 * loss3
 
 
 class OptimizedVaeLoss(nn.Module):
@@ -64,20 +73,18 @@ class OptimizedVaeLoss(nn.Module):
         self.perceptual_loss = LightweightPerceptualLoss()
         self.perceptual_weight = perceptual_weight
 
-    def forward(self, recon_x, x, mu, logvar, kl_beta=0.01):
+    def forward(self, recon_x, x, mu, logvar, kl_beta=0.0005): # Reduced kl_beta
         # 1. Pixel Reconstruction Loss
         recon_loss = F.huber_loss(recon_x, x, reduction="mean")
 
         # 2. Perceptual Loss
         perc_loss = self.perceptual_loss(recon_x, x)
 
-        # 3. Mathematically correct KL Loss (sum over latent dim, mean over batch)
-        kl_loss = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), dim=-1).mean()
+        # 3. KL Loss averaged across latent dimension to keep magnitude comparable to mean recon loss
+        kl_loss = -0.5 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
 
-        # Total Loss Combination
         total_loss = recon_loss + (self.perceptual_weight * perc_loss) + (kl_beta * kl_loss)
 
-        # Return dict for easy logging to TensorBoard / WandB
         return {
             "loss": total_loss,
             "recon_loss": recon_loss.detach(),

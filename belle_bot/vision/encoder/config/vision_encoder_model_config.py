@@ -3,4 +3,4 @@ from pydantic import BaseModel
 
 class VisionEncoderModelConfig(BaseModel):
 
-    embedding_size: int = 1024
+    embedding_size: int = 512

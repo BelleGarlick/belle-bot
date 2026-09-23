@@ -69,7 +69,7 @@ for model in models:
     model.to(DEVICE)
     model.eval()
 
-models[0].load_state_dict(torch.load("model-940000.pt", map_location=DEVICE))
+models[0].load_state_dict(torch.load("/Users/belle/Developer/belle-bot/belle_bot/vision/encoder/training/model-250000-1.1.pt", map_location=DEVICE))
 
 
 def preprocess_frames(pil_imgs: list[Image.Image], device: torch.device) -> torch.Tensor:

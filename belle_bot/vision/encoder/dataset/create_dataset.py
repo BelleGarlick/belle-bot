@@ -1,17 +1,25 @@
 import base64
+import io
 import json
+from pathlib import Path
 from typing import Literal
 
 import random
+
 import webdataset as wds
+from PIL import Image
+from matplotlib import pyplot as plt
 
+from belle_bot.utils.cli.clpy import parse_cli_args
+from belle_bot.vision.encoder.config.vision_encoder_dataset_creation_config import VisionEncoderDatasetCreationConfig
 from houston.client.py import replays
-from belle_bot.vision.encoder.config.vision_encoder_config import VisionEncoderConfig
 
-config = VisionEncoderConfig()
+# todo upload the dataset to houston once done
+
+config = parse_cli_args(VisionEncoderDatasetCreationConfig())
 
 
-def get_replay_ids(subset: Literal["training", "testing"] | None):
+def get_replay_ids(subset: Literal["train", "eval"] | None):
     filter = []
     if subset:
         filter += [subset]
@@ -25,7 +33,7 @@ def get_replay_ids(subset: Literal["training", "testing"] | None):
     return sorted([x["replay_id"] for x in replay_ids])
 
 
-def create_dataset(subset: Literal["training", "testing"], rgb_pattern: str, depth_pattern: str, shuffle=True):
+def create_dataset(subset: Literal["train", "eval"], pattern: Path, shuffle=True):
     replay_ids = get_replay_ids(subset)
 
     # todo at somepoint this may cause memory to grow too large.
@@ -49,47 +57,47 @@ def create_dataset(subset: Literal["training", "testing"], rgb_pattern: str, dep
             timestamp = float(split_tokens[1])
             data = json.loads(",".join(split_tokens[2:]))
 
+            import numpy as np
             if stream == "sensors/camera":
+                main_image = Image.open(io.BytesIO(base64.b64decode(data['rgb'])))
+
+                depth_raw_buffer = np.frombuffer(base64.b64decode(data['depth_raw']), dtype=np.float16)
+                depth_raw_buffer = np.resize(depth_raw_buffer, (320 // 2, 480 // 2, 1))
+
+                _, color_buffer = cv2.imencode('.png', depth_raw_buffer)
+
+                # todo further testing
+
+                # 480/320
                 all_items.append({
                     "replay_id": replay_id,
                     "timestamp": timestamp,
                     "rgb": data['rgb'],
                     "depth": data['depth']
                 })
+
     
     print(f"\n{subset} Total items collected: {len(all_items)}. {'Shuffling...' if shuffle else ''}")
     if shuffle:
         random.shuffle(all_items)
 
     with (
-        wds.ShardWriter(rgb_pattern, maxcount=100_000) as rgb_writer,
-        wds.ShardWriter(depth_pattern, maxcount=100_000) as depth_writer
+        wds.ShardWriter(str(pattern), maxcount=config.max_partition_size) as writer
     ):
         for item_count, item in enumerate(all_items):
             print(f"\r{subset} Writing {item_count}/{len(all_items)}", end="")
 
             try:
                 rgb_bytes = base64.b64decode(item['rgb'])
-            except Exception:
-                rgb_bytes = item['rgb']
-                
-            rgb_writer.write({
-                "__key__": f"{item_count}",
-                "jpg": rgb_bytes,
-                "json": {
-                    "replay_id": item['replay_id'],
-                    "timestamp": item['timestamp'],
-                },
-            })
-
-            try:
                 depth_bytes = base64.b64decode(item['depth'])
             except Exception:
+                rgb_bytes = item['rgb']
                 depth_bytes = item['depth']
 
-            depth_writer.write({
+            writer.write({
                 "__key__": f"{item_count}",
-                "jpg": depth_bytes,
+                "rgb": rgb_bytes,
+                "depth": depth_bytes,
                 "json": {
                     "replay_id": item['replay_id'],
                     "timestamp": item['timestamp'],
@@ -99,15 +107,15 @@ def create_dataset(subset: Literal["training", "testing"], rgb_pattern: str, dep
 
 
 if __name__ == "__main__":
+    output_dir = Path(config.output_dir)
+
     create_dataset(
-        "training",
-        "vision-encoder/v1/rgb/train-%06d.tar",
-        "vision-encoder/v1/depth/train-%06d.tar"
+        "train",
+        output_dir / "train-%06d.tar",
     )
 
     create_dataset(
-        "testing",
-        "vision-encoder/v1/rgb/test-%06d.tar",
-        "vision-encoder/v1/depth/test-%06d.tar",
+        "eval",
+        output_dir / "test-%06d.tar",
         shuffle=False
     )
