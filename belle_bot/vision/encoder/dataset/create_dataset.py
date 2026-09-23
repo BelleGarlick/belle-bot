@@ -1,11 +1,13 @@
 import base64
 import io
 import json
+import os
 from pathlib import Path
 from typing import Literal
 
 import random
 
+import cv2
 import webdataset as wds
 from PIL import Image
 from matplotlib import pyplot as plt
@@ -20,7 +22,9 @@ config = parse_cli_args(VisionEncoderDatasetCreationConfig())
 
 
 def get_replay_ids(subset: Literal["train", "eval"] | None):
-    filter = []
+    return [x for x in os.listdir("/Users/belle/Developer/belle-bot/downloaded_replays") if x[0] != "."]
+
+    filter = ["dataset/vision/encoder"]
     if subset:
         filter += [subset]
 
@@ -43,7 +47,9 @@ def create_dataset(subset: Literal["train", "eval"], pattern: Path, shuffle=True
     all_items = []
 
     for replay_idx, replay_id in enumerate(replay_ids):
-        replay_file = replays.get_replay_file(config.houston, replay_id)
+        # replay_file = replays.get_replay_file(config.houston, replay_id)
+        with open(f"/Users/belle/Developer/belle-bot/downloaded_replays/{replay_id}") as file:
+            replay_file = file.read()
         lines = replay_file.split("\n")
 
         for line in lines:
@@ -57,14 +63,19 @@ def create_dataset(subset: Literal["train", "eval"], pattern: Path, shuffle=True
             timestamp = float(split_tokens[1])
             data = json.loads(",".join(split_tokens[2:]))
 
-            import numpy as np
             if stream == "sensors/camera":
-                main_image = Image.open(io.BytesIO(base64.b64decode(data['rgb'])))
-
-                depth_raw_buffer = np.frombuffer(base64.b64decode(data['depth_raw']), dtype=np.float16)
-                depth_raw_buffer = np.resize(depth_raw_buffer, (320 // 2, 480 // 2, 1))
-
-                _, color_buffer = cv2.imencode('.png', depth_raw_buffer)
+                # main_image = Image.open(io.BytesIO(base64.b64decode(data['rgb'])))
+                # depth_data = cv2.imdecode(np.frombuffer(base64.b64decode(data['depth']), dtype=np.uint16), cv2.IMREAD_UNCHANGED)
+                #
+                # plt.imshow(main_image)
+                # plt.show()
+                # plt.imshow(depth_data)
+                # plt.show()
+                #
+                # import sys
+                # sys.exit(-1)
+                # break
+                # breakpoint()
 
                 # todo further testing
 

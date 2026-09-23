@@ -40,7 +40,7 @@ class Reshape(nn.Module):
 
 
 class VAE(nn.Module):
-    def __init__(self, img_channels=3, latent_dim=128):
+    def __init__(self, img_channels=3, latent_dim=484):
         super().__init__()
         self.latent_dim = latent_dim
 
