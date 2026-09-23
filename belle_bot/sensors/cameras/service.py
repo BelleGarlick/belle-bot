@@ -41,12 +41,22 @@ if __name__ == "__main__":
 
     # 3. Instantiate Post-Processing Filters in Recommended Order
     decimation = rs.decimation_filter(magnitude=1)  # Set to 2 if you want 2x hardware downscaling
-    threshold = rs.threshold_filter(min_dist=0.15, max_dist=4.0)  # Adjust min/max meters for your scene
+    # threshold = rs.threshold_filter(min_dist=0.15, max_dist=4.0)  # Adjust min/max meters for your scene
     depth_to_disparity = rs.disparity_transform(True)
-    spatial = rs.spatial_filter(smooth_alpha=0.5, smooth_delta=20, magnitude=2, hole_fill=0)
+
+    # spatial filtering
+    spatial = rs.spatial_filter(
+        smooth_alpha=0.5,
+        smooth_delta=20,
+        magnitude=2,
+        hole_fill=2
+    )
+
     temporal = rs.temporal_filter(smooth_alpha=0.4, smooth_delta=20, persistence_control=3)
     disparity_to_depth = rs.disparity_transform(False)
-    hole_filler = rs.hole_filling_filter(mode=1)  # 1 = farest_from_around, 2 = nearest_from_around
+
+    # Standalone hole filler using Mode 2 (nearest_from_around) instead of Mode 1
+    hole_filler = rs.hole_filling_filter(mode=2)
 
     # Initialize the colorizer tool to convert 16-bit depth to 8-bit RGB
     colorizer = rs.colorizer()
@@ -75,7 +85,7 @@ if __name__ == "__main__":
                 continue
 
             filtered_depth = decimation.process(depth_frame)
-            filtered_depth = threshold.process(filtered_depth)
+            # filtered_depth = threshold.process(filtered_depth)
             filtered_depth = depth_to_disparity.process(filtered_depth)
             filtered_depth = spatial.process(filtered_depth)
             filtered_depth = temporal.process(filtered_depth)
@@ -85,29 +95,35 @@ if __name__ == "__main__":
             # Convert depth frame to an 8-bit RGB colorized frame
             colorized_depth_frame = colorizer.colorize(filtered_depth)
 
-            # Convert both to numpy arrays
-            depth_raw = np.asanyarray(filtered_depth.get_data())
-            depth_raw = cv2.resize(depth_raw, tuple([x//2 for x in depth_raw.shape]))
-            depth_image_rgb = np.asanyarray(colorized_depth_frame.get_data())
-            color_image = np.asanyarray(color_frame.get_data())
 
             # Convert both from RGB (RealSense) to BGR (OpenCV)
-            depth_bgr = cv2.cvtColor(depth_image_rgb, cv2.COLOR_RGB2BGR)
+            color_image = np.asanyarray(color_frame.get_data())
             color_bgr = cv2.cvtColor(color_image, cv2.COLOR_RGB2BGR)
 
             # Compress both as standard 8-bit BGR images
             color_encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY]
             _, color_buffer = cv2.imencode('.jpg', color_bgr, color_encode_param)
 
-            depth_encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), DEPTH_JPEG_QUALITY]
-            _, depth_buffer = cv2.imencode('.jpg', depth_bgr, depth_encode_param)
+            # Convert both to numpy arrays
+            depth_raw_unfiltered = np.asanyarray(depth_frame.get_data())
+            depth_raw = np.asanyarray(filtered_depth.get_data())
+            h, w = depth_raw.shape[:2]
+            depth_raw = cv2.resize(depth_raw, (w // 2, h // 2), interpolation=cv2.INTER_NEAREST)
+            depth_frame = cv2.imencode('.png', depth_raw)
 
+            # Create a depth-preview
+            depth_visual = cv2.normalize(depth_raw, None, 0, 255, cv2.NORM_MINMAX)
+            depth_visual = np.uint8(depth_visual)
+            depth_encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), DEPTH_JPEG_QUALITY]
+            _, depth_visual = cv2.imencode('.jpg', depth_visual, depth_encode_param)
+
+            # todo create a depth preview
             CLIENT.publish(FABRIC_ID, {
                 "service_name": FABRIC_ID,
                 "frame_id": str(uuid.uuid4()),
                 "rgb": color_buffer,
-                "depth_raw": depth_raw,
-                "depth": depth_buffer,
+                "depth": depth_frame,
+                "depth_preview": depth_visual,
                 "shape": json.dumps(color_image.shape),
                 "jpeg_quality": JPEG_QUALITY,
             })
