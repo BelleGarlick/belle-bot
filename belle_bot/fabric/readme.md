@@ -26,7 +26,7 @@ The fabric service runs on port 59990 by default. It provides a WebSocket endpoi
 Use the `FabricClient` in `belle_bot.fabric.client` to interact with the fabric programmatically.
 
 ```python
-from belle_bot.infra.fabric import FabricClient
+from belle_bot.fabric import FabricClient
 
 client = FabricClient()
 
