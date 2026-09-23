@@ -100,24 +100,26 @@ if __name__ == "__main__":
 
             # Convert both from RGB (RealSense) to BGR (OpenCV)
             color_image = np.asanyarray(color_frame.get_data())  # colour image
-            depth_raw = np.asanyarray(depth_frame.get_data())  # raw data
+            # depth_raw = np.asanyarray(depth_frame.get_data())  # raw data
             depth = np.asanyarray(filtered_depth.get_data())  # processed
 
             # convert colour for colour one
             color_bgr = cv2.cvtColor(color_image, cv2.COLOR_RGB2BGR)
 
+            # Resize the depth image since the full definition is not as important
+            h, w = depth.shape[:2]
+            depth = cv2.resize(depth, (w // 2, h // 2), interpolation=cv2.INTER_NEAREST)
+
             # Create a depth-preview
             depth_preview = cv2.normalize(depth, None, 0, 255, cv2.NORM_MINMAX)
             depth_preview = np.uint8(depth_preview)
-            depth_raw_preview = cv2.normalize(depth_raw, None, 0, 255, cv2.NORM_MINMAX)
-            depth_raw_preview = np.uint8(depth_raw_preview)
+            # depth_raw_preview = cv2.normalize(depth_raw, None, 0, 255, cv2.NORM_MINMAX)
+            # depth_raw_preview = np.uint8(depth_raw_preview)
 
             # Encode the images
             # todo document how to read this data elsewhere
             _, depth_frame = cv2.imencode('.png', depth)
-            _, depth_raw_frame = cv2.imencode('.png', depth_raw)
             _, depth_preview = cv2.imencode('.jpg', depth_preview, depth_encode_param)
-            _, depth_raw_preview = cv2.imencode('.jpg', depth_raw_preview, depth_encode_param)
             _, color_buffer = cv2.imencode('.jpg', color_bgr, color_encode_param)
 
             CLIENT.publish(FABRIC_ID, {
@@ -125,9 +127,7 @@ if __name__ == "__main__":
                 "frame_id": str(uuid.uuid4()),
                 "rgb": color_buffer,
                 "depth": depth_frame,
-                "depth_raw": depth_raw_frame,
                 "depth_preview": depth_preview,
-                "depth_raw_preview": depth_raw_preview,
                 "shape": json.dumps(color_image.shape),
                 "jpeg_quality": JPEG_QUALITY,
             })
