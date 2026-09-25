@@ -5,7 +5,7 @@ import uuid
 import cv2
 import numpy as np
 
-from belle_bot.infra.fabric import FabricClient
+from belle_bot.fabric import FabricClient
 
 CLIENT = FabricClient()
 FABRIC_ID = "sensors/camera"
@@ -84,17 +84,16 @@ if __name__ == "__main__":
             if not depth_frame or not color_frame:
                 continue
 
-            filtered_depth = decimation.process(depth_frame)
+            # filtered_depth = decimation.process(depth_frame)
             # filtered_depth = threshold.process(filtered_depth)
-            filtered_depth = depth_to_disparity.process(filtered_depth)
-            filtered_depth = spatial.process(filtered_depth)
-            filtered_depth = temporal.process(filtered_depth)
-            filtered_depth = disparity_to_depth.process(filtered_depth)
-            filtered_depth = hole_filler.process(filtered_depth)
+            # filtered_depth = depth_to_disparity.process(filtered_depth)
+            # filtered_depth = spatial.process(filtered_depth)
+            # filtered_depth = temporal.process(filtered_depth)
+            # filtered_depth = disparity_to_depth.process(filtered_depth)
+            # filtered_depth = hole_filler.process(filtered_depth)
 
             # Convert depth frame to an 8-bit RGB colorized frame
-            colorized_depth_frame = colorizer.colorize(filtered_depth)
-
+            # colorized_depth_frame = colorizer.colorize(filtered_depth)
 
             # Convert both from RGB (RealSense) to BGR (OpenCV)
             color_image = np.asanyarray(color_frame.get_data())
@@ -105,8 +104,8 @@ if __name__ == "__main__":
             _, color_buffer = cv2.imencode('.jpg', color_bgr, color_encode_param)
 
             # Convert both to numpy arrays
-            depth_raw_unfiltered = np.asanyarray(depth_frame.get_data())
-            depth_raw = np.asanyarray(filtered_depth.get_data())
+            depth_raw = np.asanyarray(depth_frame.get_data())
+            # depth_raw = np.asanyarray(filtered_depth.get_data())
             h, w = depth_raw.shape[:2]
             depth_raw = cv2.resize(depth_raw, (w // 2, h // 2), interpolation=cv2.INTER_NEAREST)
             depth_frame = cv2.imencode('.png', depth_raw)
