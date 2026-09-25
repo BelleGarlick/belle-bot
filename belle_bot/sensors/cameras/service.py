@@ -15,6 +15,9 @@ JPEG_QUALITY = 60
 # how to encode the depth data. it's not used in the system, just for roboviz. doesn't need to be as high
 DEPTH_JPEG_QUALITY = 40
 
+color_encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY]
+depth_encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), DEPTH_JPEG_QUALITY]
+
 if __name__ == "__main__":
     import pyrealsense2 as rs
 
@@ -96,33 +99,35 @@ if __name__ == "__main__":
             # colorized_depth_frame = colorizer.colorize(filtered_depth)
 
             # Convert both from RGB (RealSense) to BGR (OpenCV)
-            color_image = np.asanyarray(color_frame.get_data())
+            color_image = np.asanyarray(color_frame.get_data())  # colour image
+            # depth_raw = np.asanyarray(depth_frame.get_data())  # raw data
+            depth = np.asanyarray(depth_frame.get_data())  # processed
+
+            # convert colour for colour one
             color_bgr = cv2.cvtColor(color_image, cv2.COLOR_RGB2BGR)
 
-            # Compress both as standard 8-bit BGR images
-            color_encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY]
-            _, color_buffer = cv2.imencode('.jpg', color_bgr, color_encode_param)
-
-            # Convert both to numpy arrays
-            depth_raw = np.asanyarray(depth_frame.get_data())
-            # depth_raw = np.asanyarray(filtered_depth.get_data())
-            h, w = depth_raw.shape[:2]
-            depth_raw = cv2.resize(depth_raw, (w // 2, h // 2), interpolation=cv2.INTER_NEAREST)
-            depth_frame = cv2.imencode('.png', depth_raw)
+            # Resize the depth image since the full definition is not as important
+            h, w = depth.shape[:2]
+            depth = cv2.resize(depth, (w // 2, h // 2), interpolation=cv2.INTER_NEAREST)
 
             # Create a depth-preview
-            depth_visual = cv2.normalize(depth_raw, None, 0, 255, cv2.NORM_MINMAX)
-            depth_visual = np.uint8(depth_visual)
-            depth_encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), DEPTH_JPEG_QUALITY]
-            _, depth_visual = cv2.imencode('.jpg', depth_visual, depth_encode_param)
+            depth_preview = cv2.normalize(depth, None, 0, 255, cv2.NORM_MINMAX)
+            depth_preview = np.uint8(depth_preview)
+            # depth_raw_preview = cv2.normalize(depth_raw, None, 0, 255, cv2.NORM_MINMAX)
+            # depth_raw_preview = np.uint8(depth_raw_preview)
 
-            # todo create a depth preview
+            # Encode the images
+            # todo document how to read this data elsewhere
+            _, depth_frame = cv2.imencode('.png', depth)
+            _, depth_preview = cv2.imencode('.jpg', depth_preview, depth_encode_param)
+            _, color_buffer = cv2.imencode('.jpg', color_bgr, color_encode_param)
+
             CLIENT.publish(FABRIC_ID, {
                 "service_name": FABRIC_ID,
                 "frame_id": str(uuid.uuid4()),
                 "rgb": color_buffer,
                 "depth": depth_frame,
-                "depth_preview": depth_visual,
+                "depth_preview": depth_preview,
                 "shape": json.dumps(color_image.shape),
                 "jpeg_quality": JPEG_QUALITY,
             })
