@@ -31,6 +31,7 @@ train_loader = DataLoader(train_dataset, batch_size=None, num_workers=4, pin_mem
 test_loader = DataLoader(test_dataset, batch_size=None, num_workers=2, pin_memory=pin_memory)
 
 # todo
+#  mask out 0 depth data items so the model has to learn how to infer them
 #  have a proper development set with tags on houston
 #  have a fully trained model and explore random generation
 #  change the mid rendering to use the normalised value

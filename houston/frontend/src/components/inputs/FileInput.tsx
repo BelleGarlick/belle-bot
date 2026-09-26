@@ -16,10 +16,22 @@ export function FileInput({
             style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: 4,
+                gap: 6,
             }}
         >
-            {label && <span>{label}</span>}
+            {label && (
+                <span
+                    style={{
+                        fontSize: "12px",
+                        fontWeight: "bold",
+                        color: "#888",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
+                    }}
+                >
+                    {label}
+                </span>
+            )}
             <Button
                 style={{
                     position: "relative",

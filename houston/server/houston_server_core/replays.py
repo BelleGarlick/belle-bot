@@ -18,13 +18,39 @@ from os import SEEK_END, SEEK_CUR
 
 
 def readlast(f):
-    try:
-        f.seek(-2, SEEK_END)  # Jump to the second last byte.
-        while f.read(1) != b"\n":  # Until newline is found ...
-            f.seek(-2, SEEK_CUR)  # ... jump back, over the read byte plus one.
-    except OSError:  # Reached begginning of File
-        f.seek(0)  # Set cursor to beginning of file as well.
-    return f.read()  # Read all data from this point on.
+    f.seek(0, SEEK_END)
+    file_size = f.tell()
+    if file_size == 0:
+        return b""
+    
+    buffer_size = 1024
+    offset = 0
+    
+    while True:
+        offset += buffer_size
+        if offset >= file_size:
+            f.seek(0)
+            return f.read()
+        
+        f.seek(-offset, SEEK_END)
+        buffer = f.read(buffer_size)
+        
+        newline_pos = buffer.rfind(b"\n")
+        if newline_pos != -1:
+            # Found a newline. If it's the very last byte of the file, we need to keep looking
+            # unless it's the only newline.
+            if offset == buffer_size and newline_pos == buffer_size - 1:
+                # Last byte is newline, check if there's another one in this buffer
+                second_last_newline = buffer[:newline_pos].rfind(b"\n")
+                if second_last_newline != -1:
+                    f.seek(-offset + second_last_newline + 1, SEEK_END)
+                    return f.read()
+                else:
+                    # Only the trailing newline found so far, continue searching in next block
+                    continue
+            
+            f.seek(-offset + newline_pos + 1, SEEK_END)
+            return f.read()
 
 
 def upload_replay(

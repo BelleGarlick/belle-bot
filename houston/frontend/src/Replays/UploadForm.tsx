@@ -12,66 +12,69 @@ export function UploadForm() {
     const [tags, setTags] = useState<string[]>([]);
     const [files, setFiles] = useState<File[]>();
     const [uploadingStatus, setUploadingStatus] = useState<string | null>(null);
+    const [uploadResult, setUploadResult] = useState<{
+        success: boolean;
+        message: string;
+    } | null>(null);
 
     const onUpload = async () => {
         if (!files || files.length === 0) {
-            alert("Please select a file");
+            setUploadResult({ success: false, message: "Please select at least one file" });
             return;
         }
 
-        if (files.length === 1) {
-            setUploadingStatus("Uploading 1/1...");
-            const file = files[0];
-            const res = await uploadReplay({
-                file: file,
-                filename: name.length > 0 ? name : null,
-                description: description,
-                platform,
-                permanent: permanent,
-                tags: tags,
-            });
-
-            setUploadingStatus(null);
-            if (res.status === 200) {
-                alert("Upload successful");
-            } else {
-                alert("Upload failed: " + JSON.stringify(res.data));
+        setUploadResult(null);
+        setUploadingStatus(`Uploading ${files.length} file(s)...`);
+        
+        const uploadPromises = files.map(async (file) => {
+            try {
+                const res = await uploadReplay({
+                    file: file,
+                    filename: name.length > 0 ? name : null,
+                    description: description,
+                    platform,
+                    permanent: permanent,
+                    tags: tags,
+                });
+                return { file, res };
+            } catch (error) {
+                return { file, error };
             }
-            return;
-        }
+        });
 
+        const results = await Promise.all(uploadPromises);
+        
         let successCount = 0;
         let failCount = 0;
         const errors: string[] = [];
 
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            setUploadingStatus(`Uploading ${i + 1}/${files.length}...`);
-            const res = await uploadReplay({
-                file: file,
-                filename: name.length > 0 ? name : null,
-                description: description,
-                platform,
-                permanent: permanent,
-                tags: tags,
-            });
-
-            if (res.status === 200) {
+        results.forEach((result) => {
+            if ('res' in result && result.res.status === 200) {
                 successCount++;
             } else {
                 failCount++;
-                errors.push(`${file.name}: ${JSON.stringify(res.data)}`);
+                const errorMessage = 'res' in result 
+                    ? JSON.stringify(result.res.data)
+                    : (result.error as any)?.message || "Unknown error";
+                errors.push(`${result.file.name}: ${errorMessage}`);
             }
-        }
+        });
 
         setUploadingStatus(null);
         if (failCount === 0) {
-            alert("Upload successful");
+            setUploadResult({
+                success: true,
+                message: `Successfully uploaded ${successCount} file(s)!`,
+            });
+            setFiles(undefined);
+            setName("");
+            setDescription("");
+            setTags([]);
         } else {
-            alert(
-                `Uploaded ${successCount} files. Failed ${failCount} files:\n` +
-                    errors.join("\n"),
-            );
+            setUploadResult({
+                success: false,
+                message: `Uploaded ${successCount} files. Failed ${failCount} files:\n` + errors.join("\n"),
+            });
         }
     };
 
@@ -87,20 +90,31 @@ export function UploadForm() {
                 border: "1px solid #333",
             }}
         >
-            <FileInput files={files} setFiles={setFiles} multi />
+            <FileInput label="Select Files" files={files} setFiles={setFiles} multi />
             {files && files.length > 0 && (
                 <div
                     style={{
-                        fontSize: "12px",
-                        color: "#888",
+                        fontSize: "13px",
+                        color: "#ccc",
                         background: "#0d0d0d",
-                        padding: "8px 12px",
+                        padding: "10px 14px",
                         borderRadius: 6,
-                        maxHeight: "60px",
+                        maxHeight: "120px",
                         overflowY: "auto",
+                        border: "1px solid #333",
                     }}
                 >
-                    <b>Selected:</b> {files.map((f) => f.name).join(", ")}
+                    <div style={{ marginBottom: 6, fontWeight: "bold", color: "#888", fontSize: "11px", textTransform: "uppercase" }}>
+                        Selected Files ({files.length})
+                    </div>
+                    {files.map((f, i) => (
+                        <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                            <span style={{ color: "#666", marginLeft: 8, fontSize: "11px" }}>
+                                {(f.size / 1024).toFixed(1)} KB
+                            </span>
+                        </div>
+                    ))}
                 </div>
             )}
             <div
@@ -141,18 +155,44 @@ export function UploadForm() {
                     id="permanent-upload"
                     checked={permanent}
                     onChange={(e) => setPermanent(e.target.checked)}
-                    style={{ width: 18, height: 18, cursor: "pointer" }}
+                    style={{ 
+                        width: 18, 
+                        height: 18, 
+                        cursor: "pointer",
+                        accentColor: THEME
+                    }}
                 />
                 <label
                     htmlFor="permanent-upload"
-                    style={{ fontSize: 14, cursor: "pointer" }}
+                    style={{ 
+                        fontSize: 14, 
+                        cursor: "pointer",
+                        color: "#eee",
+                        userSelect: "none"
+                    }}
                 >
                     Permanent Replay
                 </label>
             </div>
+            {uploadResult && (
+                <div
+                    style={{
+                        padding: "12px",
+                        borderRadius: 6,
+                        fontSize: "14px",
+                        backgroundColor: uploadResult.success ? "rgba(40, 167, 69, 0.15)" : "rgba(220, 53, 69, 0.15)",
+                        color: uploadResult.success ? "#51cf66" : "#ff6b6b",
+                        border: `1px solid ${uploadResult.success ? "#2f4535" : "#4b2e2e"}`,
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-word"
+                    }}
+                >
+                    {uploadResult.message}
+                </div>
+            )}
             <div
                 style={{
-                    marginTop: 8,
+                    marginTop: 4,
                     paddingTop: 16,
                     borderTop: "1px solid #333",
                 }}

@@ -33,10 +33,22 @@ export function TagsInput({
             style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: 4,
+                gap: 6,
             }}
         >
-            <span>{label}</span>
+            {label && (
+                <span
+                    style={{
+                        fontSize: "12px",
+                        fontWeight: "bold",
+                        color: "#888",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
+                    }}
+                >
+                    {label}
+                </span>
+            )}
             <input
                 type="text"
                 placeholder="Press Enter to add tags"
@@ -44,13 +56,18 @@ export function TagsInput({
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
                 style={{
-                    border: `2px solid ${THEME}`,
-                    borderRadius: 8,
-                    padding: "10px 18px",
-                    color: THEME,
+                    border: `1px solid #444`,
+                    borderRadius: 6,
+                    padding: "10px 14px",
+                    color: "#eee",
+                    backgroundColor: "#0d0d0d",
                     outline: "none",
-                    fontStyle: "monospace",
+                    fontFamily: "inherit",
+                    fontSize: "14px",
+                    transition: "border-color 0.2s",
                 }}
+                onFocus={(e) => (e.currentTarget.style.borderColor = THEME)}
+                onBlur={(e) => (e.currentTarget.style.borderColor = "#444")}
             />
             <Tags tags={tags} onRemove={removeTag} />
         </div>

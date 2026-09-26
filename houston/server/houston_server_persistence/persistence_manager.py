@@ -2,9 +2,13 @@ import houston_server_gateways
 from houston_server_gateways.utils import get_houston_data_root
 
 
-class PersistenceManager[T]:
+from typing import TypeVar, Generic, Callable, Any, Optional
 
-    def __init__(self, data_key: str, dict_to_model):
+T = TypeVar("T")
+
+class PersistenceManager(Generic[T]):
+
+    def __init__(self, data_key: str, dict_to_model: Callable[[dict[str, Any]], T]):
         self.key = data_key
         self.dict_to_model = dict_to_model
 
@@ -28,14 +32,14 @@ class PersistenceManager[T]:
             item,
         )
 
-    def get_item(self, item_id: str) -> T | None:
+    def get_item(self, item_id: str) -> Optional[T]:
         return houston_server_gateways.sqlite.get(
             self.key,
             item_id,
             self.dict_to_model
         )
 
-    def query_items(self, page: int, tags: list[str] | None = None) -> tuple[list[T], int]:
+    def query_items(self, page: int, tags: Optional[list[str]] = None) -> tuple[list[T], int]:
         print(tags)
         return houston_server_gateways.sqlite.query(
             self.key,
