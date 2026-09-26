@@ -137,7 +137,7 @@ class DownsampledVGGPerceptualLoss(nn.Module):
 
 class OptimizedVaeLoss(nn.Module):
 
-    def __init__(self, perceptual_weight=0.5, depth_weight=1.0):
+    def __init__(self, perceptual_weight=1.0, depth_weight=0.5):
         super().__init__()
         self.perceptual_loss = DownsampledVGGPerceptualLoss()
         self.perceptual_weight = perceptual_weight
@@ -150,7 +150,11 @@ class OptimizedVaeLoss(nn.Module):
 
         # 2. Separate Pixel Reconstruction Losses
         rgb_loss = F.l1_loss(recon_rgb, rgb)
-        depth_loss = F.l1_loss(recon_depth, depth)
+        
+        # Masked Depth Loss: only train where depth > 0.005 (may need to change this threshold)
+        depth_mask = (depth > 0.005).float()
+        depth_loss = F.l1_loss(recon_depth * depth_mask, depth * depth_mask, reduction='sum')
+        depth_loss = depth_loss / (depth_mask.sum() + 1e-8)
 
         recon_loss = rgb_loss + (self.depth_weight * depth_loss)
 

@@ -33,6 +33,7 @@ test_loader = DataLoader(test_dataset, batch_size=None, num_workers=2, pin_memor
 # todo
 #  mask out 0 depth data items so the model has to learn how to infer them
 #  have a proper development set with tags on houston
+#  report all training stats. also report the eval stats better
 #  have a fully trained model and explore random generation
 #  change the mid rendering to use the normalised value
 #  have have a way to weight the items
