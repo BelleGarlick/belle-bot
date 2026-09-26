@@ -34,10 +34,10 @@ test_loader = DataLoader(test_dataset, batch_size=None, num_workers=2, pin_memor
 #  mask out 0 depth data items so the model has to learn how to infer them
 #  report all training stats. also report the eval stats better
 #  have a fully trained model and explore random generation
-#  change the mid rendering to use the normalised value
+#  change the mid-rendering to use the normalised value
 #  have have a way to weight the items
 #  possible have the encoder trained via a multi-task embedding
-#  possibly drop input data and have hte model try and predict both
+#  possibly drop input data and have the model try and predict both
 #  have an automated pipeline for tagging items if their error is high enough
 
 def sample_model(step, train_batch, test_batch):

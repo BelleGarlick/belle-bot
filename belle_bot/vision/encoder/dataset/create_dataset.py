@@ -7,13 +7,14 @@ import random
 
 import webdataset as wds
 
-from belle_bot.utils.cli.clpy import parse_cli_args
+from belle_bot.utils.cli import clpy
 from belle_bot.vision.encoder.config.vision_encoder_dataset_creation_config import VisionEncoderDatasetCreationConfig
 from houston.client.py import replays
 
 # todo upload the dataset to houston once done
 
-config = parse_cli_args(VisionEncoderDatasetCreationConfig())
+config = clpy.parse_cli_args(VisionEncoderDatasetCreationConfig())
+clpy.print_values(config)
 
 
 def get_replay_ids(subset: Literal["train", "eval"] | None):
@@ -39,10 +40,17 @@ def create_dataset(subset: Literal["train", "eval"], pattern: Path, shuffle=True
     
     all_items = []
 
+    frequency_map = {}
+    if config.frequency_map:
+        with open(config.frequency_map) as f:
+            frequency_map = json.load(f)
+
+    skipped_frames = 0
     for replay_idx, replay_id in enumerate(replay_ids):
         replay_file = replays.get_replay_file(config.houston, replay_id)
         lines = replay_file.split("\n")
 
+        frame_idx = 0
         for line in lines:
             print(f"\r{subset} Reading {replay_idx}/{len(replay_ids)} {replay_id}", end="")
 
@@ -55,31 +63,23 @@ def create_dataset(subset: Literal["train", "eval"], pattern: Path, shuffle=True
             data = json.loads(",".join(split_tokens[2:]))
 
             if stream == "sensors/camera":
-                # main_image = Image.open(io.BytesIO(base64.b64decode(data['rgb'])))
-                # depth_data = cv2.imdecode(np.frombuffer(base64.b64decode(data['depth']), dtype=np.uint16), cv2.IMREAD_UNCHANGED)
-                #
-                # plt.imshow(main_image)
-                # plt.show()
-                # plt.imshow(depth_data)
-                # plt.show()
-                #
-                # import sys
-                # sys.exit(-1)
-                # break
-                # breakpoint()
+                key = f"{replay_id}/{frame_idx}"
 
-                # todo further testing
+                likelihood = 1 / frequency_map.get(key, 1)
+                if random.random() <= likelihood:
+                    all_items.append({
+                        "key": key,
+                        "replay_id": replay_id,
+                        "timestamp": timestamp,
+                        "rgb": data['rgb'],
+                        "depth": data['depth']
+                    })
+                else:
+                    skipped_frames += 1
 
-                # 480/320
-                all_items.append({
-                    "replay_id": replay_id,
-                    "timestamp": timestamp,
-                    "rgb": data['rgb'],
-                    "depth": data['depth']
-                })
+                frame_idx += 1
 
-    
-    print(f"\n{subset} Total items collected: {len(all_items)}. {'Shuffling...' if shuffle else ''}")
+    print(f"\n{subset} Total items collected: {len(all_items)} (skipped {skipped_frames}). {'Shuffling...' if shuffle else ''}")
     if shuffle:
         random.shuffle(all_items)
 
@@ -100,6 +100,7 @@ def create_dataset(subset: Literal["train", "eval"], pattern: Path, shuffle=True
                 "__key__": f"{item_count}",
                 "rgb": rgb_bytes,
                 "depth": depth_bytes,
+                "frame_id": item['key'],
                 "json": {
                     "replay_id": item['replay_id'],
                     "timestamp": item['timestamp'],
@@ -118,6 +119,5 @@ if __name__ == "__main__":
 
     create_dataset(
         "eval",
-        output_dir / "test-%06d.tar",
-        shuffle=False
+        output_dir / "test-%06d.tar"
     )

@@ -6,14 +6,22 @@ from pydantic._internal._model_construction import ModelMetaclass
 
 
 def print_help(config: Type[BaseModel], prefix=" --"):
-    for field, value in config.model_fields.items():
-        if isinstance(value.annotation, ModelMetaclass):
-            print_help(value.annotation, prefix=prefix + f"{field}.")
-        else:
-            text = f"{prefix}{field}: {value.description or 'No description provided'}"
-            if value.default is not None:
-                text = f"{text} (default: {value.default})"
-            print(text)
+    model_schema = config.model_json_schema()
+
+    bold = "\033[1m"
+    header = "\033[95m"
+    end = "\033[0m"
+
+    for key, value in model_schema['properties'].items():
+        if '$ref' in value:
+            # todo iterate through the model schema again
+            # breakpoint()
+            pass
+        print(f"{bold}{header}--{key}{end}: {value.get('description', 'no description')}")
+        print(f"  default: {value.get('default', None)}")
+        # print(key, value)
+
+    # breakpoint()
 
 
 def print_values(config: BaseModel, prefix=" - "):
@@ -54,14 +62,25 @@ def parse_cli_args[T](default_args: T) -> T:
     for key, item in to_dict(default_args).items():
         args_dict["--" + key] = item
 
-    for i in range(len(sys.argv) - 1):
-        if i == "-h" or i == "--help":
-            print_help(args_dict)
+    # todo update this whole method its stupid
+    for i in range(len(sys.argv)):
+        if sys.argv[i] == "-h" or sys.argv[i] == "--help":
+            print_help(default_args)
             sys.exit()
 
-        if sys.argv[i] in args_dict:
-            args_dict[sys.argv[i]] = sys.argv[i + 1]
+        key = sys.argv[i]
+        if key in args_dict and sys.argv[i].startswith("--"):
+            args_dict[key] = sys.argv[i + 1]
             # todo update the args
             # todo somehow parse
+
+    # todo, do this above so we dont need to update the args dict
+    for key, value in args_dict.items():
+        key = key.replace("--", "")
+        tokens = key.split(".")
+        current_arg_level = default_args
+        for i in range(len(tokens) - 1):
+            current_arg_level = getattr(current_arg_level, tokens[i])
+        setattr(current_arg_level, tokens[-1], value)
 
     return default_args
