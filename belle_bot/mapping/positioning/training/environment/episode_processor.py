@@ -6,13 +6,10 @@ from typing import Literal
 import numpy as np
 
 from belle_bot.mapping.positioning.config.positioning_config import PositioningConfig
-from houston.client.py import replays
 from belle_bot.mapping.positioning.training.environment.env import Frame
 from belle_bot.mapping.positioning.training.environment.episode import Episode
 from belle_bot.mapping.positioning.training.models import GpsPoint
-from houston.client.py.config import HoustonConfig
 from belle_bot.mapping.positioning.training.environment.multi_environment import load_replay_ids
-
 
 
 def process_episode(episode: Episode):
@@ -57,7 +54,7 @@ def process_episode(episode: Episode):
 #  eventually turn into web dataset
 #  eventually make it so we can have randomness during this so the model can deal with imperfect data
 
-def load_episodes(config: PositioningConfig, subset: Literal['training', 'testing'], limit=None, augment_rotation: int | None = None):
+def load_episodes(config: PositioningConfig, subset: Literal['train', 'test'], limit=None, augment_rotation: int | None = None):
     replay_ids = load_replay_ids(config.houston, subset)
 
     episodes = []
@@ -84,11 +81,11 @@ def process_episodes(episodes: list[Episode], seq_len: int = 100):
     return windows
 
 
-def load_dataset(subset: Literal['training', 'testing'], seq_len: int = 100, limit: int | None = None, augment_rotation: int | None = None):
+def load_dataset(subset: Literal['train', 'test'], seq_len: int = 100, limit: int | None = None, augment_rotation: int | None = None):
     episodes = load_episodes(subset, limit, augment_rotation=augment_rotation)
     return process_episodes(episodes, seq_len)
 
 
 if __name__ == "__main__":
-    load_dataset('training')
-    load_dataset('testing')
+    load_dataset('train')
+    load_dataset('test')

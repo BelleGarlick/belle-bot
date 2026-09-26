@@ -122,7 +122,7 @@ if __name__ == "__main__":
 
         env = MultiEnvironment(
             config,
-            subset="training",
+            subset="train",
             envs=config.training.n_environments,
             seq_len=config.model.sequence_length,
             random_subsample=config.training.random_subsample,
@@ -213,7 +213,7 @@ if __name__ == "__main__":
                 if (step + 1) % config.training.eval_every_n_steps == 0:
                     eval = perform_evals(
                         config=config,
-                        episodes=load_episodes(config, "testing"),
+                        episodes=load_episodes(config, "test"),
                         model=model,
                         bounds=bounds,
                     )

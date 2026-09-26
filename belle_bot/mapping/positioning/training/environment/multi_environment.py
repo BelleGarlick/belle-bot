@@ -11,7 +11,7 @@ from belle_bot.mapping.positioning.training.environment.env import Frame
 from houston.client.py import replays
 
 
-def load_replay_ids(config: HoustonConfig, subset: Literal['training', 'testing'] | None) -> list[str]:
+def load_replay_ids(config: HoustonConfig, subset: Literal['train', 'test'] | None) -> list[str]:
     filter = ["dataset/mapping/position"]
     if subset:
         filter += [subset]
@@ -33,7 +33,7 @@ class ResetData:
 
 class MultiEnvironment:
 
-    def __init__(self, config: PositioningConfig, subset: Literal['training', 'testing'] | None, seq_len, envs=8, random_subsample=False, random_rotation=False, seed=None):
+    def __init__(self, config: PositioningConfig, subset: Literal['train', 'test'] | None, seq_len, envs=8, random_subsample=False, random_rotation=False, seed=None):
         self.config = config
         self.replay_ids: list[str] = load_replay_ids(config=config.houston, subset=subset)
 
