@@ -104,7 +104,7 @@ export function SensorWindow() {
             selection: [selectedCamera],
             options: [
                 { text: "RGB", value: "rgb" },
-                { text: "Depth", value: "depth" },
+                { text: "Depth", value: "depth_preview" },
             ],
             setSelection: (x) => setSelectedCamera(x[0] as "rgb" | "depth"),
         });

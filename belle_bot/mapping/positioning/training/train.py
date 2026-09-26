@@ -106,13 +106,13 @@ if __name__ == "__main__":
     bounds = NormalisationBounds().load(bounds_path)
 
     for _ in range(100):
-        config.training.actual_snap_distance = random.random() * 0.8 + 1.7
-        config.training.max_gps_snap_distance = random.random() + 0.8 * 3.5
-        config.training.mini_batch_size = random.randint(24, 40)
-        config.training.gaussian_noise_factor = random.random() * 0.05 + 0.075
-        config.model.sequence_length = random.randint(145, 180)
-        config.training.replay_buffer_size = random.randint(25_000, 40_000)
-        config.training.learning_rate_gamma = (random.random() * 0.04) + 0.525
+        config.training.actual_snap_distance = random.random() * 0.5 + 1.7
+        config.training.max_gps_snap_distance = random.random() + 0.6 * 3.5
+        config.training.mini_batch_size = random.randint(28, 36)
+        config.training.gaussian_noise_factor = random.random() * 0.03 + 0.065
+        config.model.sequence_length = random.randint(155, 170)
+        config.training.replay_buffer_size = random.randint(30_000, 35_000)
+        config.training.learning_rate_gamma = (random.random() * 0.02) + 0.725
 
         clpy.print_values(config)
 
