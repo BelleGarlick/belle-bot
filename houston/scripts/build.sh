@@ -23,7 +23,7 @@ mkdir -p "$HOUSTON_DIR/frontend/src/api"
 # Export the OpenAPI schema from the FastAPI app
 echo "Generating openapi.json..."
 cd "$PROJECT_ROOT"
-PYTHONPATH="$HOUSTON_DIR/server" .venv/bin/python -c '
+PYTHONPATH="$HOUSTON_DIR/server" python -c '
 import json
 import sys
 from houston_server_api.api import app

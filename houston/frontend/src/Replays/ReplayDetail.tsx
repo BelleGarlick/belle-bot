@@ -119,8 +119,12 @@ export function ReplayDetail({
     }, [replays]);
 
     const runReplays = () => {
+        const name =
+            replays.length === 1
+                ? replays[0].filename || "replay"
+                : `replayer-${v4().split("-")[0]}`;
         createReplayer({
-            name: v4(),
+            name,
             replay_ids: replays.map((replay) => replay.replay_id),
         }).then((response) => {
             console.log(response);
@@ -141,8 +145,6 @@ export function ReplayDetail({
             await Promise.all(replays.map((r) => deleteReplay(r.replay_id)));
             if (onDelete) {
                 onDelete();
-            } else {
-                window.location.reload();
             }
         } catch (error) {
             console.error("Failed to delete replay(s):", error);
@@ -262,7 +264,7 @@ export function ReplayDetail({
                         flexDirection: "column",
                         gap: 12,
                         marginTop: 4,
-                        padding: 12,
+                        padding: 16,
                         background: "#1a1a1a",
                         borderRadius: 8,
                         border: "1px solid #333",
@@ -278,18 +280,28 @@ export function ReplayDetail({
                             style={{
                                 border: `1px solid #444`,
                                 borderRadius: 6,
-                                padding: "8px 12px",
+                                padding: "10px 14px",
                                 color: "#eee",
                                 backgroundColor: "#0d0d0d",
                                 outline: "none",
-                                fontFamily: "monospace",
+                                fontFamily: "inherit",
                                 fontSize: 14,
                                 flex: 1,
+                                transition: "border-color 0.2s",
                             }}
+                            onFocus={(e) =>
+                                (e.currentTarget.style.borderColor = THEME)
+                            }
+                            onBlur={(e) =>
+                                (e.currentTarget.style.borderColor = "#444")
+                            }
                         />
                         <Button
                             onClick={handleAddTag}
-                            style={{ padding: "8px 16px" }}
+                            style={{
+                                padding: "8px 16px",
+                                fontSize: "14px",
+                            }}
                         >
                             Add
                         </Button>
@@ -374,8 +386,16 @@ export function ReplayDetail({
                         color: "#dc3545",
                         padding: "10px",
                     }}
+                    onMouseOver={(e) => {
+                        e.currentTarget.style.backgroundColor = "#dc3545";
+                        e.currentTarget.style.color = "white";
+                    }}
+                    onMouseOut={(e) => {
+                        e.currentTarget.style.backgroundColor = "transparent";
+                        e.currentTarget.style.color = "#dc3545";
+                    }}
                 >
-                    Delete Replay
+                    Delete {replays.length > 1 ? `${replays.length} Replays` : "Replay"}
                 </Button>
             </div>
         </div>

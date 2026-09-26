@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button, FileInput, TextField } from "../components/inputs";
 import { uploadReplay } from "../api/api.ts";
 import { TagsInput } from "../components/tags/TagsInput.tsx";
+import {THEME} from "../Roboviz/utils.tsx";
 
 export function UploadForm() {
     const [name, setName] = useState("");
@@ -105,17 +106,21 @@ export function UploadForm() {
             <div
                 style={{
                     display: "grid",
-                    gridTemplateColumns: "1fr",
+                    gridTemplateColumns: "1fr 1fr",
                     gap: 12,
                 }}
             >
-                <TextField label="Name" value={name} onChange={setName} />
-                <TextField
-                    label="Description"
-                    value={description}
-                    onChange={setDescription}
-                    multiline
-                />
+                <div style={{ gridColumn: "span 2" }}>
+                    <TextField label="Name" value={name} onChange={setName} />
+                </div>
+                <div style={{ gridColumn: "span 2" }}>
+                    <TextField
+                        label="Description"
+                        value={description}
+                        onChange={setDescription}
+                        multiline
+                    />
+                </div>
                 <TextField
                     label="Platform"
                     value={platform}

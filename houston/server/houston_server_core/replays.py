@@ -8,10 +8,11 @@ from houston_server_persistence.replay import Replay
 from houston_server_persistence import PersistenceManager
 
 
-replays_persistence = PersistenceManager[Replay](
-    "replays",
-    lambda data: Replay(**data)
-)
+def get_replay_persistence() -> PersistenceManager[Replay]:
+    return PersistenceManager[Replay](
+        "replays",
+        lambda data: Replay(**data)
+    )
 
 from os import SEEK_END, SEEK_CUR
 
@@ -36,9 +37,9 @@ def upload_replay(
 ) -> Replay:
     replay_id = str(uuid.uuid4())
 
-    path = replays_persistence.save_upload(replay_id, upload)
+    path = get_replay_persistence().save_upload(replay_id, upload)
 
-    with open(replays_persistence.get_file_path(path), "rb") as f:
+    with open(get_replay_persistence().get_file_path(path), "rb") as f:
         first = f.readline().decode("utf-8")
         last = readlast(f).decode("utf-8")
 
@@ -46,7 +47,7 @@ def upload_replay(
     start_time = datetime.datetime.fromtimestamp(float(first.split(",")[1]))
     end_time = datetime.datetime.fromtimestamp(float(last.split(",")[1]))
 
-    return replays_persistence.save_model(
+    return get_replay_persistence().save_model(
         replay_id,
         Replay(
             filename=filename,
@@ -64,11 +65,11 @@ def upload_replay(
 
 
 def get_replay(replay_id: str) -> Replay | None:
-    return replays_persistence.get_item(replay_id)
+    return get_replay_persistence().get_item(replay_id)
 
 
 def get_replay_object(replay: Replay) -> str | None:
-    file_path = replays_persistence.get_file_path(replay.path)
+    file_path = get_replay_persistence().get_file_path(replay.path)
     if file_path.exists():
         return str(file_path)
     return None
@@ -78,12 +79,12 @@ def update_replay(replay_id: str, replay: Replay) -> Replay | None:
     existing = get_replay(replay_id)
     if not existing:
         return None
-    return replays_persistence.save_model(replay_id, replay)
+    return get_replay_persistence().save_model(replay_id, replay)
 
 
 def query_replays(page: int, tags: list[str] | None = None) -> tuple[list[Replay], int]:
-    return replays_persistence.query_items(page, tags=tags)
+    return get_replay_persistence().query_items(page, tags=tags)
 
 
 def delete_replay(replay_id: str):
-    replays_persistence.delete_item(replay_id)
+    get_replay_persistence().delete_item(replay_id)

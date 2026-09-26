@@ -11,28 +11,58 @@ export function TextField({
     onChange?: (value: string) => void;
     multiline?: boolean;
 }) {
+    const inputStyle: React.CSSProperties = {
+        border: `1px solid #444`,
+        borderRadius: 6,
+        padding: "10px 14px",
+        color: "#eee",
+        backgroundColor: "#0d0d0d",
+        outline: "none",
+        fontFamily: "inherit",
+        fontSize: "14px",
+        transition: "border-color 0.2s",
+    };
+
     return (
         <div
             style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: 4,
+                gap: 6,
             }}
         >
-            <span>{label}</span>
-            <input
-                type="text"
-                value={value}
-                onChange={(e) => onChange?.(e.target.value)}
+            <span
                 style={{
-                    border: `2px solid ${THEME}`,
-                    borderRadius: 8,
-                    padding: "10px 18px",
-                    color: THEME,
-                    outline: "none",
-                    fontStyle: "monospace",
+                    fontSize: "12px",
+                    fontWeight: "bold",
+                    color: "#888",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
                 }}
-            />
+            >
+                {label}
+            </span>
+            {multiline ? (
+                <textarea
+                    value={value}
+                    onChange={(e) => onChange?.(e.target.value)}
+                    rows={3}
+                    style={{
+                        ...inputStyle,
+                        resize: "vertical",
+                        minHeight: "80px",
+                    }}
+                />
+            ) : (
+                <input
+                    type="text"
+                    value={value}
+                    onChange={(e) => onChange?.(e.target.value)}
+                    style={inputStyle}
+                    onFocus={(e) => (e.currentTarget.style.borderColor = THEME)}
+                    onBlur={(e) => (e.currentTarget.style.borderColor = "#444")}
+                />
+            )}
         </div>
     );
 }

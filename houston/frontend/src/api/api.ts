@@ -120,7 +120,7 @@ export const getUploadReplayUrl = () => {
 
 
 
-  return `http://localhost:8080/api/replays`
+  return `http://houston:8080/api/replays`
 }
 
 /**
@@ -195,7 +195,7 @@ export const getListReplaysUrl = (params?: ListReplaysParams,) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `http://localhost:8080/api/replays?${stringifiedParams}` : `http://localhost:8080/api/replays`
+  return stringifiedParams.length > 0 ? `http://houston:8080/api/replays?${stringifiedParams}` : `http://houston:8080/api/replays`
 }
 
 /**
@@ -238,7 +238,7 @@ export const getGetReplayFileUrl = (replayId: string,) => {
 
 
 
-  return `http://localhost:8080/api/replays/${replayId}`
+  return `http://houston:8080/api/replays/${replayId}`
 }
 
 /**
@@ -281,7 +281,7 @@ export const getUpdateReplayUrl = (replayId: string,) => {
 
 
 
-  return `http://localhost:8080/api/replays/${replayId}`
+  return `http://houston:8080/api/replays/${replayId}`
 }
 
 /**
@@ -299,36 +299,48 @@ export const updateReplay = async (replayId: string,
   }
 );}
 
+
+
 export type deleteReplayResponse204 = {
-  data: unknown;
-  status: 204;
-};
+  data: void
+  status: 204
+}
 
 export type deleteReplayResponse422 = {
-  data: HTTPValidationError;
-  status: 422;
-};
+  data: HTTPValidationError
+  status: 422
+}
 
-export type deleteReplayResponseSuccess = deleteReplayResponse204 & {
+export type deleteReplayResponseSuccess = (deleteReplayResponse204) & {
+  headers: Headers;
+};
+export type deleteReplayResponseError = (deleteReplayResponse422) & {
   headers: Headers;
 };
 
-export type deleteReplayResponseError = deleteReplayResponse422 & {
-  headers: Headers;
-};
+export type deleteReplayResponse = (deleteReplayResponseSuccess | deleteReplayResponseError)
 
-export type deleteReplayResponse = deleteReplayResponseSuccess | deleteReplayResponseError;
+export const getDeleteReplayUrl = (replayId: string,) => {
 
-export const getDeleteReplayUrl = (replayId: string) => {
-  return `http://localhost:8080/api/replays/${replayId}`;
-};
 
+
+
+  return `http://houston:8080/api/replays/${replayId}`
+}
+
+/**
+ * @summary Delete Replay
+ */
 export const deleteReplay = async (replayId: string, options?: RequestInit): Promise<deleteReplayResponse> => {
-  return customInstance<deleteReplayResponse>(getDeleteReplayUrl(replayId), {
+
+  return customInstance<deleteReplayResponse>(getDeleteReplayUrl(replayId),
+  {
     ...options,
-    method: 'DELETE',
-  });
-};
+    method: 'DELETE'
+
+
+  }
+);}
 
 
 
@@ -356,7 +368,7 @@ export const getGetReplayInfoUrl = (replayId: string,) => {
 
 
 
-  return `http://localhost:8080/api/replays/${replayId}/info`
+  return `http://houston:8080/api/replays/${replayId}/info`
 }
 
 /**
@@ -392,7 +404,7 @@ export const getGetReplayersUrl = () => {
 
 
 
-  return `http://localhost:8080/api/replayer`
+  return `http://houston:8080/api/replayer`
 }
 
 /**
@@ -436,7 +448,7 @@ export const getCreateReplayerUrl = () => {
 
 
 
-  return `http://localhost:8080/api/replayer`
+  return `http://houston:8080/api/replayer`
 }
 
 /**
@@ -480,7 +492,7 @@ export const getTerminateReplayerUrl = (replayerId: string,) => {
 
 
 
-  return `http://localhost:8080/api/replayer/${replayerId}`
+  return `http://houston:8080/api/replayer/${replayerId}`
 }
 
 /**
@@ -524,7 +536,7 @@ export const getUploadModelUrl = () => {
 
 
 
-  return `http://localhost:8080/api/models/`
+  return `http://houston:8080/api/models/`
 }
 
 /**
@@ -582,7 +594,7 @@ export const getListModelsUrl = (params?: ListModelsParams,) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `http://localhost:8080/api/models/?${stringifiedParams}` : `http://localhost:8080/api/models/`
+  return stringifiedParams.length > 0 ? `http://houston:8080/api/models/?${stringifiedParams}` : `http://houston:8080/api/models/`
 }
 
 /**
@@ -625,7 +637,7 @@ export const getGetModelFileUrl = (modelId: string,) => {
 
 
 
-  return `http://localhost:8080/api/models/${modelId}`
+  return `http://houston:8080/api/models/${modelId}`
 }
 
 /**
@@ -668,7 +680,7 @@ export const getGetModelInfoUrl = (modelId: string,) => {
 
 
 
-  return `http://localhost:8080/api/models/${modelId}/info`
+  return `http://houston:8080/api/models/${modelId}/info`
 }
 
 /**
@@ -704,7 +716,7 @@ export const getReadIndexUrl = () => {
 
 
 
-  return `http://localhost:8080/`
+  return `http://houston:8080/`
 }
 
 /**

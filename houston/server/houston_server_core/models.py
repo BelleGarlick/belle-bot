@@ -7,10 +7,11 @@ from fastapi import UploadFile
 from houston_server_persistence.models import Model
 from houston_server_persistence import PersistenceManager
 
-models_persistence = PersistenceManager[Model](
-    "models",
-    lambda data: Model(**data)
-)
+def get_model_persistence() -> PersistenceManager[Model]:
+    return PersistenceManager[Model](
+        "models",
+        lambda data: Model(**data)
+    )
 
 
 def upload_model(
@@ -25,9 +26,9 @@ def upload_model(
 
     model_id = str(uuid.uuid4())
 
-    path = models_persistence.save_upload(model_id, upload)
+    path = get_model_persistence().save_upload(model_id, upload)
 
-    return models_persistence.save_model(
+    return get_model_persistence().save_model(
         model_id,
         Model(
             model_id=model_id,
@@ -43,8 +44,8 @@ def upload_model(
 
 
 def get_model(model_id: str) -> Model | None:
-    return models_persistence.get_item(model_id)
+    return get_model_persistence().get_item(model_id)
 
 
 def query_models(page: int) -> tuple[list[Model], int]:
-    return models_persistence.query_items(page)
+    return get_model_persistence().query_items(page)

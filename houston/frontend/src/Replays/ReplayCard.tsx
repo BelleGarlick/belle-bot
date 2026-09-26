@@ -61,24 +61,47 @@ export function ReplayCard({
                 >
                     {replay.replay_id.split("-")[0]}...
                 </b>
-                <span style={{ color: "#888", fontSize: "12px" }}>
+                <span style={{ color: "#888", fontSize: "11px" }}>
                     {uploadDate}
                 </span>
             </div>
             {replay.filename && (
                 <div
+                    title={replay.filename}
                     style={{
                         fontWeight: "bold",
                         whiteSpace: "nowrap",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
+                        color: "#eee",
                     }}
                 >
                     {replay.filename}
                 </div>
             )}
-            <div style={{ color: "#aaa", fontSize: "12px" }}>
-                {replay.platform || "Unknown Platform"}
+            <div
+                style={{
+                    color: "#888",
+                    fontSize: "12px",
+                    display: "flex",
+                    justifyContent: "space-between",
+                }}
+            >
+                <span>{replay.platform || "Unknown"}</span>
+                {replay.permanent && (
+                    <span
+                        style={{
+                            color: THEME,
+                            fontSize: "10px",
+                            border: `1px solid ${THEME}60`,
+                            padding: "0 4px",
+                            borderRadius: "4px",
+                            textTransform: "uppercase",
+                        }}
+                    >
+                        Perm
+                    </span>
+                )}
             </div>
             <Tags tags={replay.tags ?? []} />
         </div>
