@@ -1,16 +1,11 @@
 import base64
-import io
 import json
-import os
 from pathlib import Path
 from typing import Literal
 
 import random
 
-import cv2
 import webdataset as wds
-from PIL import Image
-from matplotlib import pyplot as plt
 
 from belle_bot.utils.cli.clpy import parse_cli_args
 from belle_bot.vision.encoder.config.vision_encoder_dataset_creation_config import VisionEncoderDatasetCreationConfig
@@ -22,8 +17,6 @@ config = parse_cli_args(VisionEncoderDatasetCreationConfig())
 
 
 def get_replay_ids(subset: Literal["train", "eval"] | None):
-    return [x for x in os.listdir("/Users/belle/Developer/belle-bot/downloaded_replays") if x[0] != "."]
-
     filter = ["dataset/vision/encoder"]
     if subset:
         filter += [subset]
@@ -47,9 +40,7 @@ def create_dataset(subset: Literal["train", "eval"], pattern: Path, shuffle=True
     all_items = []
 
     for replay_idx, replay_id in enumerate(replay_ids):
-        # replay_file = replays.get_replay_file(config.houston, replay_id)
-        with open(f"/Users/belle/Developer/belle-bot/downloaded_replays/{replay_id}") as file:
-            replay_file = file.read()
+        replay_file = replays.get_replay_file(config.houston, replay_id)
         lines = replay_file.split("\n")
 
         for line in lines:

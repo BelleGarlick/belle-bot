@@ -10,10 +10,6 @@ class Reshape(nn.Module):
         return x.view(x.shape[0], *self.shape)
 
 
-import torch
-import torch.nn as nn
-
-
 class UpConvBlock(nn.Module):
     """Bilinear upsampling followed by standard convolution to eliminate checkerboard artifacts."""
     def __init__(self, in_channels, out_channels):
