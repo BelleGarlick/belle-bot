@@ -13,7 +13,7 @@ import torchvision.transforms.functional as F_vision
 from matplotlib import pyplot as plt
 
 # Dataset setup
-base_path = Path(__file__).parent / "vision-encoder" / "v1"
+base_path = Path("/run/media/belle/Houston/datasets/vision-encoder/v1/")
 train_path = str(base_path / "train-{000000..000002}.tar")
 test_path = str(base_path / "test-{000000..000001}.tar")
 

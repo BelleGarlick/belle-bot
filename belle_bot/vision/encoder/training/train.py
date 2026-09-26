@@ -172,5 +172,5 @@ if __name__ == "__main__":
                         sample_model(step, batch, last_test_batch)
 
             if (step + 1) % config.checkpoint_every_n_steps == 0:
-                model_path = f"model-{step + 1}-1.5-{config.model.embedding_size}_2.pt"
+                model_path = f"model-{config.model.embedding_size}_2.pt"
                 torch.save(model.state_dict(), model_path)
