@@ -44,7 +44,7 @@ INITIAL_TRAIN_SIZE = 500  # used to accumulate data for normalisation
 RANDOM_SEED = 42
 
 
-EXPERIMENT_TAG = "all 18"
+EXPERIMENT_TAG = "all 19"
 # for 13, make it so any mean position errors < 0.02 get saved so we can replay them
 
 
