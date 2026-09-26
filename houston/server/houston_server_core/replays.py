@@ -83,3 +83,7 @@ def update_replay(replay_id: str, replay: Replay) -> Replay | None:
 
 def query_replays(page: int, tags: list[str] | None = None) -> tuple[list[Replay], int]:
     return replays_persistence.query_items(page, tags=tags)
+
+
+def delete_replay(replay_id: str):
+    replays_persistence.delete_item(replay_id)

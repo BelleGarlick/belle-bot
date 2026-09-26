@@ -1,4 +1,9 @@
-import { type Replay, updateReplay, createReplayer } from "../api/api.ts";
+import {
+    type Replay,
+    updateReplay,
+    createReplayer,
+    deleteReplay,
+} from "../api/api.ts";
 import { type PropsWithChildren, useEffect, useState } from "react";
 import { THEME } from "../Roboviz/utils.tsx";
 import { v4 } from "uuid";
@@ -30,10 +35,34 @@ function LabelledValue({
             style={{
                 display: "flex",
                 flexDirection: "column",
+                padding: "8px 12px",
+                background: "#1a1a1a",
+                borderRadius: 8,
+                border: "1px solid #333",
             }}
         >
-            <span style={{ fontWeight: "bold" }}>{label}</span>
-            <span style={{ fontSize: 14 }}>{value}</span>
+            <span
+                style={{
+                    fontWeight: "bold",
+                    fontSize: 12,
+                    color: "#888",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                }}
+            >
+                {label}
+            </span>
+            <span
+                style={{
+                    fontSize: 14,
+                    color: "#eee",
+                    marginTop: 4,
+                    wordBreak: "break-all",
+                    fontFamily: label.includes("ID") ? "monospace" : "inherit",
+                }}
+            >
+                {value || "N/A"}
+            </span>
         </div>
     );
 }
@@ -41,9 +70,11 @@ function LabelledValue({
 export function ReplayDetail({
     replays,
     onTagsUpdated,
+    onDelete,
 }: {
     replays: Replay[];
     onTagsUpdated?: (updated: Replay[]) => void;
+    onDelete?: () => void;
 }) {
     // const { replayId } = useParams<{ replayId: string }>();
     // const [replay, setReplay] = useState<Replay | null>(null);
@@ -95,6 +126,28 @@ export function ReplayDetail({
             console.log(response);
             window.location.href = "/replayers";
         });
+    };
+
+    const handleDelete = async () => {
+        if (replays.length === 0) return;
+        const confirmMessage =
+            replays.length === 1
+                ? "Are you sure you want to delete this replay?"
+                : `Are you sure you want to delete these ${replays.length} replays?`;
+
+        if (!confirm(confirmMessage)) return;
+
+        try {
+            await Promise.all(replays.map((r) => deleteReplay(r.replay_id)));
+            if (onDelete) {
+                onDelete();
+            } else {
+                window.location.reload();
+            }
+        } catch (error) {
+            console.error("Failed to delete replay(s):", error);
+            alert("Failed to delete replay(s)");
+        }
     };
 
     const handleAddTag = async () => {
@@ -151,129 +204,180 @@ export function ReplayDetail({
     };
 
     return (
-        <>
-            <div
-                style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "16px",
-                }}
-            >
-                {replays.length === 1 && (
-                    <>
+        <div
+            style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "20px",
+            }}
+        >
+            {replays.length === 1 && (
+                <div
+                    style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 12,
+                    }}
+                >
+                    <div style={{ gridColumn: "span 2" }}>
                         <LabelledValue
                             label="Replay ID"
                             value={replays[0].replay_id}
                         />
+                    </div>
+                    <div style={{ gridColumn: "span 2" }}>
                         <LabelledValue
                             label="Filename"
                             value={replays[0].filename}
                         />
-                        <LabelledValue
-                            label="Platform"
-                            value={replays[0].platform}
-                        />
-                        <LabelledValue
-                            label="Description"
-                            value={replays[0].description}
-                        />
+                    </div>
+                    <LabelledValue
+                        label="Platform"
+                        value={replays[0].platform}
+                    />
+                    <LabelledValue
+                        label="Permanent"
+                        value={replays[0].permanent ? "Yes" : "No"}
+                    />
+                    <div style={{ gridColumn: "span 2" }}>
                         <LabelledValue
                             label="Upload Time"
                             value={new Date(
                                 replays[0].upload_time,
                             ).toLocaleString()}
                         />
+                    </div>
+                    <div style={{ gridColumn: "span 2" }}>
                         <LabelledValue
-                            label="Permanent"
-                            value={replays[0].permanent ? "Yes" : "No"}
+                            label="Description"
+                            value={replays[0].description}
                         />
-                    </>
-                )}
-                <Labelled label="Tags">
+                    </div>
+                </div>
+            )}
+            <Labelled label="Tags">
+                <div
+                    style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 12,
+                        marginTop: 4,
+                        padding: 12,
+                        background: "#1a1a1a",
+                        borderRadius: 8,
+                        border: "1px solid #333",
+                    }}
+                >
+                    <div style={{ display: "flex", gap: 8 }}>
+                        <input
+                            type="text"
+                            value={newTag}
+                            onChange={(e) => setNewTag(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            placeholder="Add a tag..."
+                            style={{
+                                border: `1px solid #444`,
+                                borderRadius: 6,
+                                padding: "8px 12px",
+                                color: "#eee",
+                                backgroundColor: "#0d0d0d",
+                                outline: "none",
+                                fontFamily: "monospace",
+                                fontSize: 14,
+                                flex: 1,
+                            }}
+                        />
+                        <Button
+                            onClick={handleAddTag}
+                            style={{ padding: "8px 16px" }}
+                        >
+                            Add
+                        </Button>
+                    </div>
                     <div
                         style={{
                             display: "flex",
-                            flexDirection: "column",
+                            flexWrap: "wrap",
                             gap: 8,
-                            marginTop: 4,
                         }}
                     >
-                        <div style={{ display: "flex", gap: 8 }}>
-                            <input
-                                type="text"
-                                value={newTag}
-                                onChange={(e) => setNewTag(e.target.value)}
-                                onKeyDown={handleKeyDown}
-                                placeholder="Add a tag..."
-                                style={{
-                                    border: `2px solid ${THEME}`,
-                                    borderRadius: 8,
-                                    padding: "6px 12px",
-                                    color: THEME,
-                                    backgroundColor: "black",
-                                    outline: "none",
-                                    fontFamily: "monospace",
-                                    fontSize: 14,
-                                    flex: 1,
-                                }}
-                            />
-                            <Button onClick={handleAddTag}>Add Tag</Button>
-                        </div>
-                        <div
-                            style={{
-                                display: "flex",
-                                flexWrap: "wrap",
-                                gap: 8,
-                                marginTop: 4,
-                            }}
-                        >
-                            {tags.length > 0 ? (
-                                tags.map((tag) => (
-                                    <div
-                                        key={tag}
+                        {tags.length > 0 ? (
+                            tags.map((tag) => (
+                                <div
+                                    key={tag}
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 6,
+                                        backgroundColor: `${THEME}25`,
+                                        border: `1px solid ${THEME}`,
+                                        borderRadius: 6,
+                                        padding: "4px 10px",
+                                        fontSize: "13px",
+                                        fontFamily: "monospace",
+                                        color: THEME,
+                                    }}
+                                >
+                                    <span>{tag}</span>
+                                    <button
+                                        onClick={() => handleRemoveTag(tag)}
                                         style={{
+                                            border: "none",
+                                            background: "none",
+                                            cursor: "pointer",
+                                            fontWeight: "bold",
+                                            padding: "0 2px",
+                                            fontSize: "16px",
+                                            color: THEME,
                                             display: "flex",
                                             alignItems: "center",
-                                            gap: 6,
-                                            backgroundColor: `${THEME}15`,
-                                            border: `1px solid ${THEME}`,
-                                            borderRadius: 8,
-                                            padding: "2px 10px",
-                                            fontSize: "14px",
-                                            fontFamily: "monospace",
-                                            color: THEME,
                                         }}
                                     >
-                                        <span>{tag}</span>
-                                        <button
-                                            onClick={() => handleRemoveTag(tag)}
-                                            style={{
-                                                border: "none",
-                                                background: "none",
-                                                cursor: "pointer",
-                                                fontWeight: "bold",
-                                                padding: "0 2px",
-                                                fontSize: "14px",
-                                                color: THEME,
-                                            }}
-                                        >
-                                            &times;
-                                        </button>
-                                    </div>
-                                ))
-                            ) : (
-                                <span style={{ fontSize: 14, color: "#666" }}>
-                                    No tags
-                                </span>
-                            )}
-                        </div>
+                                        &times;
+                                    </button>
+                                </div>
+                            ))
+                        ) : (
+                            <span style={{ fontSize: 13, color: "#666" }}>
+                                No shared tags
+                            </span>
+                        )}
                     </div>
-                </Labelled>
+                </div>
+            </Labelled>
 
-                <Labelled label="Replay">
-                    <Button onClick={runReplays}>Run Replayer</Button>
-                </Labelled>
+            <div
+                style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 12,
+                    marginTop: 8,
+                    paddingTop: 20,
+                    borderTop: "1px solid #333",
+                }}
+            >
+                <Button
+                    onClick={runReplays}
+                    style={{
+                        padding: "12px",
+                        fontSize: "16px",
+                        fontWeight: "bold",
+                    }}
+                >
+                    ▶ Run Replayer
+                </Button>
+                <Button
+                    onClick={handleDelete}
+                    style={{
+                        backgroundColor: "transparent",
+                        border: "1px solid #dc3545",
+                        color: "#dc3545",
+                        padding: "10px",
+                    }}
+                >
+                    Delete Replay
+                </Button>
             </div>
-        </>
+        </div>
     );
 }
