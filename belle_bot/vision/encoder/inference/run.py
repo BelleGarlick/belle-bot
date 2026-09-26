@@ -13,26 +13,36 @@ from belle_bot.utils.cli import clpy
 from belle_bot.vision.encoder.config.vision_encoder_video_config import VisionEncoderTrainingConfig
 from belle_bot.vision.encoder.training.data_loader import custom_decoder, merge
 from belle_bot.vision.encoder.training.ml_model import VAE2_448
+from houston.client.py import replays
 
 path = "/Users/belle/Developer/belle-bot/downloaded_replays"
 
 
+def get_replay_ids(subset: Literal["train", "eval"] | None):
+    filter = ["dataset/vision/encoder"]
+    if subset:
+        filter += [subset]
+
+    replay_ids = replays.query_replays(
+        config.houston,
+        page=0,
+        tags=filter
+    )['replays']
+
+    return sorted([x["replay_id"] for x in replay_ids])
+
+
 def _parse_events():
     # Filter out hidden files or non-replay files
-    replay_ids = [f for f in os.listdir(path) if not f.startswith('.')]
-    if not replay_ids:
-        raise FileNotFoundError(f"No valid replay files found in {path}")
-
+    replay_ids = get_replay_ids("test")
     random.shuffle(replay_ids)
 
     events = []
     for replay_id in replay_ids:
+        replay_file = replays.get_replay_file(config.houston, replay_id)
         print(replay_id)
-        replay_file = os.path.join(path, "703f9322-a87a-4a4a-8dd8-e87a32535379.txt")
 
-        with open(replay_file) as f:
-            lines = f.readlines()
-
+        lines = replay_file.split("\n")
         for line in lines:
             if "," not in line:
                 continue
@@ -69,7 +79,7 @@ for model in models:
     model.to(DEVICE)
     model.eval()
 
-models[0].load_state_dict(torch.load("/Users/belle/Developer/belle-bot/belle_bot/vision/encoder/training/model-140000-1.5-484_2.pt", map_location=DEVICE))
+models[0].load_state_dict(torch.load("model-729_2.pt", map_location=DEVICE))
 
 
 def predict_frames(model, tensor):
@@ -104,7 +114,7 @@ if __name__ == "__main__":
     output_path = 'belle-bot-vision-encoder.mp4'
 
     all_frames = []
-    batch_size = 16
+    batch_size = 1
 
     encodeds = []
 
@@ -132,7 +142,7 @@ if __name__ == "__main__":
                 decoded_img = batch_images[j]
 
                 # Reshape latent vector into a 32x32 single-channel block (32 * 32 = 1024)
-                # encoded_vis = np.reshape(encoded, (22, 22))
+                # encoded_vis = np.reshape(encoded, (27, 27))
                 # encoded_vis = np.expand_dims(encoded_vis, axis=-1)
                 # encoded_vis = np.repeat(encoded_vis, 3, axis=-1)
 
@@ -140,7 +150,7 @@ if __name__ == "__main__":
                     np.clip(encoded, 0, 100),
                     np.clip(encoded, 0, 100),
                     np.clip(-encoded, 0, 100)
-                )).reshape((22, 22, 3))
+                )).reshape((27, 27, 3))
                 encoded_vis = cv2.resize(encoded_vis, (50, 50), interpolation=cv2.INTER_NEAREST)
                 encoded_vis = encoded_vis * 100
 
