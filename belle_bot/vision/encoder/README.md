@@ -19,20 +19,35 @@ The Vision Encoder project provides tools for creating datasets from replays, tr
 
 ### 1. Dataset Creation
 
-The encoder uses [WebDataset](https://github.com/webdataset/webdataset) format for efficient data loading.
+The vision dataset is comprised of the rgb frame and the depth frame. The encoder uses [WebDataset](https://github.com/webdataset/webdataset) format for 
+efficient data loading.
 
-To create a new dataset from Houston replays:
+During development, it was found that the model would largely overfit to frequent frames. E.g. when belle-bot first 
+turns on or is placed down or waiting in a stationary moment. The number of similar frames increases and the model 
+then starts overfitting to those frames degrading the performance of the whole dataset. 
 
+To combat this, these frequent frames are downsampled. You take the latest version of the encoder model, run the 
+downsample script to create a frequency map which is used to downsample at 1/neighbours. This way, items with lots of 
+similar frames will show less frequently and therefore improve the model's overall ability to learn to a low-dimensional
+representation.
+
+Step 1:
 ```bash
 python -m belle_bot.vision.encoder.dataset.create_dataset
 ```
+If you have a pretrained model, then run continue. If not, train the model on the generated dataset from above and come 
+back here.
 
-This will:
-1. Query Houston for replays tagged with `train` and `eval`.
-2. Extract `sensors/camera` streams.
-3. Save the images into `vision-encoder/v1/rgb/` and `vision-encoder/v1/depth/` as indexed TAR shards.
+Step 2:
+```bash
+python -m belle_bot.vision.encoder.dataset.dataset_downsampler
+```
+This will create a frequency_map that will be used to downsample the dataset.
 
-You can customize the output path and partition size in `config/vision_encoder_dataset_creation_config.py`.
+Step 3:  
+Repeat step 1 but include the --frequency_map flag.
+
+> For more information on the above commands, you can run them with '-h' or '--help'.
 
 ### 2. Training
 
