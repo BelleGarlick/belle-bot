@@ -299,6 +299,37 @@ export const updateReplay = async (replayId: string,
   }
 );}
 
+export type deleteReplayResponse204 = {
+  data: unknown;
+  status: 204;
+};
+
+export type deleteReplayResponse422 = {
+  data: HTTPValidationError;
+  status: 422;
+};
+
+export type deleteReplayResponseSuccess = deleteReplayResponse204 & {
+  headers: Headers;
+};
+
+export type deleteReplayResponseError = deleteReplayResponse422 & {
+  headers: Headers;
+};
+
+export type deleteReplayResponse = deleteReplayResponseSuccess | deleteReplayResponseError;
+
+export const getDeleteReplayUrl = (replayId: string) => {
+  return `http://localhost:8080/api/replays/${replayId}`;
+};
+
+export const deleteReplay = async (replayId: string, options?: RequestInit): Promise<deleteReplayResponse> => {
+  return customInstance<deleteReplayResponse>(getDeleteReplayUrl(replayId), {
+    ...options,
+    method: 'DELETE',
+  });
+};
+
 
 
 export type getReplayInfoResponse200 = {

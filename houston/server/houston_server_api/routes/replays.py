@@ -79,3 +79,9 @@ async def update_replay(replay_id: str, body: Replay) -> Replay:
     if not replay:
         raise HTTPException(status_code=404, detail="Replay not found")
     return replay
+
+
+@replay_router.delete("/{replay_id}", status_code=204)
+async def delete_replay(replay_id: str):
+    core.delete_replay(replay_id)
+    return Response(status_code=204)

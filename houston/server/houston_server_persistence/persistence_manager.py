@@ -44,15 +44,9 @@ class PersistenceManager[T]:
             tags=tags
         )
 
-    # def delete_replay(self, replay_id: str):
-    #     replay = get_replay(replay_id)
-    #     if replay:
-    #         houston_server_gateways.files.delete_from_store(replay.path)
-    #         houston_server_gateways.sqlite.delete(TABLE_NAME, replay_id)
-    #
-    # def save_upload(self, replay_id: str, upload: UploadFile) -> str:
-    #     return houston_server_gateways.files.save_upload(
-    #         TABLE_NAME,
-    #         upload,
-    #         replay_id
-    #     )
+    def delete_item(self, item_id: str):
+        item = self.get_item(item_id)
+        if item:
+            if hasattr(item, 'path') and item.path:
+                houston_server_gateways.files.delete_from_store(self.get_file_path(item.path))
+            houston_server_gateways.sqlite.delete(self.key, item_id)
