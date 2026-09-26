@@ -20,7 +20,7 @@ interface FabricContextI {
 const FabricContext = createContext<FabricContextI | null>(null);
 
 export function FabricContextProvider({ children }: PropsWithChildren) {
-    const [domain, setDomain] = useState<string | undefined>("localhost:15401");
+    const [domain, setDomain] = useState<string | undefined>("belle-bot:59991");
 
     const webSockets = useRef<{ [key: string]: WebSocket }>({});
     const callbacks = useRef<{
