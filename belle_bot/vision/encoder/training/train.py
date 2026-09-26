@@ -1,5 +1,6 @@
 import math
 from collections import deque
+from contextlib import nullcontext
 
 import matplotlib.pyplot as plt
 import mlflow
@@ -11,15 +12,16 @@ from belle_bot.utils.cli import clpy
 from belle_bot.vision.encoder.config.vision_encoder_training_config import VisionEncoderTrainingConfig
 from belle_bot.vision.encoder.training.data_loader import load_dataset
 from belle_bot.vision.encoder.training.loss import OptimizedVaeLoss
-from belle_bot.vision.encoder.training.ml_model import VAE
+from belle_bot.vision.encoder.training.ml_model import VAE2_448
 
 from torch.utils.data import DataLoader
 
 DEVICE = torch.device('mps' if torch.backends.mps.is_available() else ('cuda' if torch.cuda.is_available() else 'cpu'))
 
 config = clpy.parse_cli_args(VisionEncoderTrainingConfig())
+config.houston.enabled = False
 
-model = VAE(img_channels=4, latent_dim=config.model.embedding_size).to(DEVICE)
+model = VAE2_448(latent_dim=config.model.embedding_size).to(DEVICE)
 optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
 loss_fn = OptimizedVaeLoss().to(DEVICE)
 
@@ -27,6 +29,15 @@ train_dataset, test_dataset = load_dataset(config)
 pin_memory = DEVICE.type != 'mps'
 train_loader = DataLoader(train_dataset, batch_size=None, num_workers=4, pin_memory=pin_memory)
 test_loader = DataLoader(test_dataset, batch_size=None, num_workers=2, pin_memory=pin_memory)
+
+# todo
+#  have a proper development set with tags on houston
+#  have a fully trained model and explore random generation
+#  change the mid rendering to use the normalised value
+#  have have a way to weight the items
+#  possible have the encoder trained via a multi-task embedding
+#  possibly drop input data and have hte model try and predict both
+#  have an automated pipeline for tagging items if their error is high enough
 
 def sample_model(step, train_batch, test_batch):
     model.eval()
@@ -43,17 +54,18 @@ def sample_model(step, train_batch, test_batch):
             # Let's show RGB and Depth as separate rows for both input and output.
 
             image_pairs = []
+            cm = plt.get_cmap('rainbow')
             for i in range(min(4, x_np.shape[0])):
                 input_rgb = x_np[i, :3, :, :].transpose((1, 2, 0))
-                input_depth = x_np[i, 3, :, :]
+                input_depth = cm(x_np[i, 3, :, :])[:, :, :3]
                 output_rgb = y[i, :3, :, :].transpose((1, 2, 0))
-                output_depth = y[i, 3, :, :]
+                output_depth = cm(y[i, 3, :, :])[:, :, :3]
 
                 # Normalize depth for visualization if needed, but it should be 0-1
-                
+
                 pair = np.vstack((
-                    np.hstack((input_rgb, np.stack([input_depth]*3, axis=-1))),
-                    np.hstack((output_rgb, np.stack([output_depth]*3, axis=-1)))
+                    np.hstack((input_rgb, input_depth)),
+                    np.hstack((output_rgb, output_depth))
                 ))
                 image_pairs.append(pair)
             
@@ -62,7 +74,7 @@ def sample_model(step, train_batch, test_batch):
             plt.figure(figsize=(16, 8))
             plt.title(f"Reconstructions ({name}) - Left: RGB, Right: Depth | Top: Input, Bottom: Output")
             plt.imshow(np.clip(row, 0, 1))
-            plt.savefig(f"training_plot_{(step+1)}_{name}_1.3.png")
+            plt.savefig(f"training_plot_{(step+1)}_{name}_1.5_{config.model.embedding_size}_2.png")
             plt.close()
 
 
@@ -70,13 +82,16 @@ if __name__ == "__main__":
     train_dl = iter(train_loader)
     test_dl = iter(test_loader)
 
-    mlflow.set_tracking_uri(config.mlflow.endpoint)
-    mlflow.set_experiment("vision-encoder")
+    if config.houston.enabled:
+        mlflow.set_tracking_uri(config.mlflow.endpoint)
+        mlflow.set_experiment("vision-encoder")
+        mlflow_run = mlflow.start_run(run_name=str("optimised-vae"))
+    else:
+        mlflow_run = nullcontext()
 
-    with mlflow.start_run(run_name=str("optimised-vae")):
-    # with mlflow.start_run(run_name=str(uuid.uuid4())):
-        mlflow.log_params(clpy.to_dict(config))
-        # mlflow.set_tag("experiment", EXPERIMENT_TAG)
+    with mlflow_run:
+        if config.houston.enabled:
+            mlflow.log_params(clpy.to_dict(config))
 
         epoch_loss_train = deque(maxlen=1000)
         for step, batch in enumerate(train_dl):
@@ -144,10 +159,11 @@ if __name__ == "__main__":
 
                     print(f"\rStep: {step}. Running Loss: {np.mean(epoch_loss_train):.5f} Val Loss: {np.mean(epoch_loss_val):.5f}")
 
-                    mlflow.log_metrics({
-                        "loss": np.mean(epoch_loss_train),
-                        "val_loss": np.mean(epoch_loss_val),
-                    }, step=step + 1)
+                    if config.houston.enabled:
+                        mlflow.log_metrics({
+                            "loss": np.mean(epoch_loss_train),
+                            "val_loss": np.mean(epoch_loss_val),
+                        }, step=step + 1)
 
                     # Print some example outputs
                     if last_test_batch is not None:
@@ -155,5 +171,5 @@ if __name__ == "__main__":
                         sample_model(step, batch, last_test_batch)
 
             if (step + 1) % config.checkpoint_every_n_steps == 0:
-                model_path = f"model-{step + 1}-1.3.pt"
+                model_path = f"model-{step + 1}-1.5-{config.model.embedding_size}_2.pt"
                 torch.save(model.state_dict(), model_path)

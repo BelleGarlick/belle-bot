@@ -3,6 +3,7 @@ import json
 import os
 import random
 
+import cv2
 import imageio.v3 as iio
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,7 +12,7 @@ import torch
 from belle_bot.utils.cli import clpy
 from belle_bot.vision.encoder.config.vision_encoder_video_config import VisionEncoderTrainingConfig
 from belle_bot.vision.encoder.training.data_loader import custom_decoder, merge
-from belle_bot.vision.encoder.training.ml_model import VAE
+from belle_bot.vision.encoder.training.ml_model import VAE2_448
 
 path = "/Users/belle/Developer/belle-bot/downloaded_replays"
 
@@ -26,7 +27,8 @@ def _parse_events():
 
     events = []
     for replay_id in replay_ids:
-        replay_file = os.path.join(path, replay_id)
+        print(replay_id)
+        replay_file = os.path.join(path, "703f9322-a87a-4a4a-8dd8-e87a32535379.txt")
 
         with open(replay_file) as f:
             lines = f.readlines()
@@ -51,6 +53,8 @@ def _parse_events():
         if events:
             break
 
+    # events = events[:100] + events[-100:]
+
     return events
 
 
@@ -58,13 +62,14 @@ DEVICE = torch.device('mps' if torch.backends.mps.is_available() else ('cuda' if
 
 config = clpy.parse_cli_args(VisionEncoderTrainingConfig())
 
-models = [VAE(img_channels=4, latent_dim=config.model.embedding_size)]
+models = [VAE2_448(img_channels=4, latent_dim=config.model.embedding_size)]
+# models = [VAE2_448(img_channels=4, latent_dim=484)]
 
 for model in models:
     model.to(DEVICE)
     model.eval()
 
-models[0].load_state_dict(torch.load("/Users/belle/Developer/belle-bot/belle_bot/vision/encoder/training/model-40000-1.3.pt", map_location=DEVICE))
+models[0].load_state_dict(torch.load("/Users/belle/Developer/belle-bot/belle_bot/vision/encoder/training/model-140000-1.5-484_2.pt", map_location=DEVICE))
 
 
 def predict_frames(model, tensor):
@@ -84,10 +89,11 @@ def predict_frames(model, tensor):
 def tensor_frame_to_joint_frame(t):
     rgb_t = t[:, :, :3]
     depth_t = t[:, :, 3]
+    depth_t = depth_t / np.max(depth_t)
 
     # Use a colormap to colorize depth (e.g., 'viridis')
     # depth_t is expected to be in [0, 1] range
-    cm = plt.get_cmap('viridis')
+    cm = plt.get_cmap('rainbow')
     depth_colored = cm(depth_t)[:, :, :3]  # Remove alpha channel if present
 
     return np.concatenate((rgb_t, depth_colored), axis=1)
@@ -98,7 +104,9 @@ if __name__ == "__main__":
     output_path = 'belle-bot-vision-encoder.mp4'
 
     all_frames = []
-    batch_size = 32
+    batch_size = 16
+
+    encodeds = []
 
     for i in range(0, len(events), batch_size):
         batch_events = events[i:i + batch_size]
@@ -124,22 +132,36 @@ if __name__ == "__main__":
                 decoded_img = batch_images[j]
 
                 # Reshape latent vector into a 32x32 single-channel block (32 * 32 = 1024)
-                encoded_vis = np.reshape(encoded, (22, 22))
-                encoded_vis = np.expand_dims(encoded_vis, axis=-1)
-                encoded_vis = np.repeat(encoded_vis, 3, axis=-1)
+                # encoded_vis = np.reshape(encoded, (22, 22))
+                # encoded_vis = np.expand_dims(encoded_vis, axis=-1)
+                # encoded_vis = np.repeat(encoded_vis, 3, axis=-1)
+
+                encoded_vis = np.vstack((
+                    np.clip(encoded, 0, 100),
+                    np.clip(encoded, 0, 100),
+                    np.clip(-encoded, 0, 100)
+                )).reshape((22, 22, 3))
+                encoded_vis = cv2.resize(encoded_vis, (50, 50), interpolation=cv2.INTER_NEAREST)
+                encoded_vis = encoded_vis * 100
 
                 joint_frame_in = np.array(joint_input_frames[j] * 255, dtype=np.uint8)
                 joint_frame = np.array(tensor_frame_to_joint_frame(decoded_img) * 255, dtype=np.uint8)
                 ref = np.concatenate((joint_frame_in, joint_frame), axis=0)
 
+
+                # todo change the bright colours around
+                # encoded_vis = (encoded_vis * 10) + 128
+                # encoded_vis = encoded_vis / np.max(encoded_vis)
+
+                encodeds.append(encoded)
+
                 # Overlay latent grid onto bottom-center of decoded image
                 h, w, _ = ref.shape
                 hh, hw = h // 2, w // 2
-                ref[hh - 11:hh + 11, hw - 11:hw + 11] = encoded_vis
+                ref[hh - 25:hh + 25, hw - 25:hw + 25] = encoded_vis
 
                 all_frames.append(ref)
 
-        #
         # # 4. Concatenate original and reconstructed frames horizontally for the batch
         # for frame_images in batch_frame_images:
         #     render_image = np.hstack(frame_images)
@@ -152,3 +174,6 @@ if __name__ == "__main__":
         print(f"\nVideo saved successfully to {output_path} ({len(all_frames)} total frames processed)")
     else:
         print("\nNo frames were processed.")
+
+    print(np.array(encodeds).max())
+    print(np.array(encodeds).min())
