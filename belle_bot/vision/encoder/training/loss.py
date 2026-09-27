@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.models import mobilenet_v3_small, MobileNet_V3_Small_Weights
+import torchvision.models as models
 
 
 class LightweightPerceptualLoss(nn.Module):
@@ -67,9 +68,6 @@ class LightweightPerceptualLoss(nn.Module):
         return 0.2 * loss1 + 0.5 * loss2 + 1.0 * loss3
 
 
-import torchvision.models as models
-
-
 class VGGPerceptualLoss(nn.Module):
     def __init__(self):
         super().__init__()
@@ -99,73 +97,59 @@ class VGGPerceptualLoss(nn.Module):
         )
 
 
-class DownsampledVGGPerceptualLoss(nn.Module):
-    def __init__(self, target_size=(224, 224)):
-        super().__init__()
-        self.target_size = target_size
-        weights = models.VGG16_Weights.DEFAULT
-        vgg = models.vgg16()
+class SpatialGradientLoss(nn.Module):
+    """Calculates image gradient differences to sharply penalize blur on edges."""
 
-        state_dict = torch.hub.load_state_dict_from_url(weights.url, check_hash=False)
-        vgg.load_state_dict(state_dict)
-        vgg = vgg.features.eval()
+    def forward(self, pred, target):
+        pred_grad_x = torch.abs(pred[:, :, :, :-1] - pred[:, :, :, 1:])
+        pred_grad_y = torch.abs(pred[:, :, :-1, :] - pred[:, :, 1:, :])
 
-        self.slice1 = vgg[:4]
-        self.slice2 = vgg[4:9]
-        self.slice3 = vgg[9:16]
+        target_grad_x = torch.abs(target[:, :, :, :-1] - target[:, :, :, 1:])
+        target_grad_y = torch.abs(target[:, :, :-1, :] - target[:, :, 1:, :])
 
-        for param in self.parameters():
-            param.requires_grad = False
-
-        self.register_buffer("mean", torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1))
-        self.register_buffer("std", torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1))
-
-    def forward(self, x, y):
-        # Downsample 448x448 -> 224x224 to reduce compute by 4x
-        x_small = F.interpolate(x[:, :3], size=self.target_size, mode='bilinear', align_corners=False)
-        y_small = F.interpolate(y[:, :3], size=self.target_size, mode='bilinear', align_corners=False)
-
-        x_norm = (x_small - self.mean) / self.std
-        y_norm = (y_small - self.mean) / self.std
-
-        h1_x, h1_y = self.slice1(x_norm), self.slice1(y_norm)
-        h2_x, h2_y = self.slice2(h1_x), self.slice2(h1_y)
-        h3_x, h3_y = self.slice3(h2_x), self.slice3(h2_y)
-
-        return F.l1_loss(h1_x, h1_y) + F.l1_loss(h2_x, h2_y) + F.l1_loss(h3_x, h3_y)
+        loss_x = F.l1_loss(pred_grad_x, target_grad_x)
+        loss_y = F.l1_loss(pred_grad_y, target_grad_y)
+        return loss_x + loss_y
 
 
 class OptimizedVaeLoss(nn.Module):
-
-    def __init__(self, perceptual_weight=1.0, depth_weight=0.5):
+    def __init__(self, perceptual_weight=1.0, depth_weight=0.5, grad_weight=0.5):
         super().__init__()
-        self.perceptual_loss = DownsampledVGGPerceptualLoss()
+        # Use full-resolution VGG perceptual loss instead of downsampled
+        self.perceptual_loss = VGGPerceptualLoss()
+        self.gradient_loss = SpatialGradientLoss()
         self.perceptual_weight = perceptual_weight
         self.depth_weight = depth_weight
+        self.grad_weight = grad_weight
 
     def forward(self, recon_x, x, mu, logvar, kl_beta=0.0005):
-        # 1. Split RGB (channels 0..2) and Depth (channel 3)
         recon_rgb, recon_depth = recon_x[:, :3, :, :], recon_x[:, 3:, :, :]
         rgb, depth = x[:, :3, :, :], x[:, 3:, :, :]
 
-        # 2. Separate Pixel Reconstruction Losses
+        # Pixel Reconstruction Loss
         rgb_loss = F.l1_loss(recon_rgb, rgb)
-        
-        # Masked Depth Loss: only train where depth > 0.005 (may need to change this threshold)
+
         depth_mask = (depth > 0.005).float()
         depth_loss = F.l1_loss(recon_depth * depth_mask, depth * depth_mask, reduction='sum')
         depth_loss = depth_loss / (depth_mask.sum() + 1e-8)
 
         recon_loss = rgb_loss + (self.depth_weight * depth_loss)
 
-        # 3. Perceptual Loss (RGB only)
+        # Image Edge Sharpening Loss
+        edge_loss = self.gradient_loss(recon_rgb, rgb) + self.gradient_loss(recon_depth, depth)
+
+        # Perceptual Loss on unscaled resolution
         perc_loss = self.perceptual_loss(recon_rgb, rgb)
 
-        # 4. KL Loss
+        # KL Loss
         kl_loss = -0.5 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
 
-        # Total Loss
-        total_loss = recon_loss + (self.perceptual_weight * perc_loss) + (kl_beta * kl_loss)
+        total_loss = (
+                recon_loss
+                + (self.perceptual_weight * perc_loss)
+                + (self.grad_weight * edge_loss)
+                + (kl_beta * kl_loss)
+        )
 
         return {
             "loss": total_loss,

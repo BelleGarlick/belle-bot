@@ -75,37 +75,53 @@ class DepthwiseSeparableConv(nn.Module):
         return self.act(self.bn(self.pointwise(self.depthwise(x))))
 
 
+class SubPixelUpBlock(nn.Module):
+    """Sub-pixel convolution upsampling to eliminate checkerboard/screendoor artifacts."""
+
+    def __init__(self, in_channels, out_channels):
+        super().__init__()
+        # PixelShuffle reduces channels by factor of 4 while doubling height and width
+        self.conv = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels * 4, kernel_size=3, padding=1, bias=False),
+            nn.PixelShuffle(2),
+            nn.BatchNorm2d(out_channels),
+            nn.SiLU(inplace=True),
+            ConvBlock(out_channels, out_channels)
+        )
+
+    def forward(self, x):
+        return self.conv(x)
+
+
 class VAE2_448(nn.Module):
     def __init__(self, img_channels=4, latent_dim=1024):
         super().__init__()
-        self.latent_dim = latent_dim
 
-        # Encoder: Downsamples 6 times (448 -> 224 -> 112 -> 56 -> 28 -> 14 -> 7)
+        self.latent_dim = latent_dim
         self.encoder = nn.Sequential(
-            DepthwiseSeparableConv(img_channels, 32, stride=2),   # 448x448 -> 224x224
-            DepthwiseSeparableConv(32, 64, stride=2),            # 224x224 -> 112x112
-            DepthwiseSeparableConv(64, 128, stride=2),           # 112x112 -> 56x56
-            DepthwiseSeparableConv(128, 256, stride=2),          # 56x56   -> 28x28
-            DepthwiseSeparableConv(256, 512, stride=2),          # 28x28   -> 14x14
-            DepthwiseSeparableConv(512, 512, stride=2),          # 14x14   -> 7x7
+            DepthwiseSeparableConv(img_channels, 32, stride=2),  # 224x224
+            DepthwiseSeparableConv(32, 64, stride=2),  # 112x112
+            DepthwiseSeparableConv(64, 128, stride=2),  # 56x56
+            DepthwiseSeparableConv(128, 256, stride=2),  # 28x28
+            DepthwiseSeparableConv(256, 512, stride=2),  # 14x14
+            DepthwiseSeparableConv(512, 512, stride=2),  # 7x7
         )
 
-        self.flatten_dim = 512 * 7 * 7  # 25,088
-
+        self.flatten_dim = 512 * 7 * 7
         self.fc_mu = nn.Linear(self.flatten_dim, latent_dim)
         self.fc_logvar = nn.Linear(self.flatten_dim, latent_dim)
 
         self.decoder_input = nn.Linear(latent_dim, self.flatten_dim)
 
-        # Decoder: Upsamples 6 times with increased channel capacity (7 -> 14 -> 28 -> 56 -> 112 -> 224 -> 448)
+        # Increased capacity in earlier layers
         self.decoder = nn.Sequential(
-            SmoothUpBlock(512, 512),                                # 7x7     -> 14x14
-            SmoothUpBlock(512, 256),                                # 14x14   -> 28x28
-            SmoothUpBlock(256, 128),                                # 28x28   -> 56x56
-            SmoothUpBlock(128, 64),                                 # 56x56   -> 112x112
-            SmoothUpBlock(64, 32),                                  # 112x112 -> 224x224
-            SmoothUpBlock(32, 16),                                  # 224x224 -> 448x448
-            nn.Conv2d(16, img_channels, kernel_size=3, padding=1),  # Final projection
+            SubPixelUpBlock(512, 512),  # 14x14
+            SubPixelUpBlock(512, 256),  # 28x28
+            SubPixelUpBlock(256, 128),  # 56x56
+            SubPixelUpBlock(128, 64),  # 112x112
+            SubPixelUpBlock(64, 32),  # 224x224
+            SubPixelUpBlock(32, 32),  # 448x448
+            nn.Conv2d(32, img_channels, kernel_size=3, padding=1),  # Final output projection
             nn.Sigmoid()
         )
 

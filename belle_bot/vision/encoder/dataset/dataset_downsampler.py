@@ -63,10 +63,10 @@ if __name__ == "__main__":
     dataset_pattern = str(output_dir / "train-{000000..000002}.tar")
 
     # step 3: load up the onnx encoder in this dir and create an embedding for all items
-    encoder_path = os.path.join(os.path.dirname(__file__), "../model_exporter/model-729_2_encoder.onnx")
+    encoder_path = os.path.join(os.path.dirname(__file__), "../model_exporter/model-1024_2_encoder.onnx")
     if not os.path.exists(encoder_path):
         # Fallback to absolute path from run.py if needed, but let's try relative first
-        encoder_path = "/Users/belle/Developer/belle-bot/belle_bot/vision/encoder/model_exporter/model-729_2_encoder.onnx"
+        encoder_path = "/Users/belle/Developer/belle-bot/belle_bot/vision/encoder/model_exporter/model-1024_2_encoder.onnx"
 
     print(f"Loading encoder from {encoder_path}")
     encoder = load_encoder(encoder_path)
