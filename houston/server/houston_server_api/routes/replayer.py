@@ -1,22 +1,19 @@
 from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, Field
-
 from houston_server_core.replayer import list_replayers, start_process, stop_replayer
+from pydantic import BaseModel, Field
 
 replayer_router = APIRouter(prefix="/replayer", tags=["Replayer"])
 
 
 class StartReplayerRequest(BaseModel):
     name: str = Field(
-        ...,
-        description="Logical name for this replayer run",
-        example="test_run_1"
+        ..., description="Logical name for this replayer run", example="test_run_1"
     )
 
     replay_ids: list[str] = Field(
         ...,
         description="List of replay IDs to process",
-        example=["replay_01", "replay_02"]
+        example=["replay_01", "replay_02"],
     )
 
 
@@ -31,9 +28,7 @@ class ReplayerResponse(BaseModel):
 
 
 @replayer_router.get(
-    "",
-    response_model=list[ReplayerResponse],
-    summary="List all active replayers"
+    "", response_model=list[ReplayerResponse], summary="List all active replayers"
 )
 def get_replayers():
     """Retrieve all running replayer metadata from the pid storage."""
@@ -44,14 +39,14 @@ def get_replayers():
     "",
     response_model=ReplayerResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Start a new replayer process pair"
+    summary="Start a new replayer process pair",
 )
 def create_replayer(payload: StartReplayerRequest):
     """Spawns background process pairs (Fabric server & Replayer) and records their execution metadata."""
     if not payload.replay_ids:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="At least one replay ID must be provided."
+            detail="At least one replay ID must be provided.",
         )
 
     try:
@@ -60,14 +55,14 @@ def create_replayer(payload: StartReplayerRequest):
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to start replayer processes: {str(e)}"
+            detail=f"Failed to start replayer processes: {e!s}",
         )
 
 
 @replayer_router.delete(
     "/{replayer_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Stop a replayer process pair"
+    summary="Stop a replayer process pair",
 )
 def terminate_replayer(replayer_id: str):
     """Terminates fabric and replayer processes associated with the given replayer ID via SIGTERM."""
@@ -77,7 +72,7 @@ def terminate_replayer(replayer_id: str):
     if not target:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Replayer with ID '{replayer_id}' not found."
+            detail=f"Replayer with ID '{replayer_id}' not found.",
         )
 
     try:
@@ -88,7 +83,5 @@ def terminate_replayer(replayer_id: str):
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to kill process group for {replayer_id}: {str(e)}"
+            detail=f"Failed to kill process group for {replayer_id}: {e!s}",
         )
-
-    return None

@@ -1,12 +1,10 @@
 import json
-import os
 import sqlite3
-import typing
-from typing import Callable, TypeVar
-
-from pydantic import BaseModel
+from collections.abc import Callable
+from typing import TypeVar
 
 from houston_server_gateways.utils import get_houston_data_root
+from pydantic import BaseModel
 
 T = TypeVar("T", bound=BaseModel)
 TReturn = TypeVar("TReturn")

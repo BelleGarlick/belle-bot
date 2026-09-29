@@ -1,20 +1,15 @@
 import datetime
 import uuid
+from os import SEEK_END
 
 import pytz
 from fastapi import UploadFile
-
-from houston_server_persistence.replay import Replay
 from houston_server_persistence import PersistenceManager
+from houston_server_persistence.replay import Replay
 
 
 def get_replay_persistence() -> PersistenceManager[Replay]:
-    return PersistenceManager[Replay](
-        "replays",
-        lambda data: Replay(**data)
-    )
-
-from os import SEEK_END, SEEK_CUR
+    return PersistenceManager[Replay]("replays", lambda data: Replay(**data))
 
 
 def readlast(f):
@@ -22,19 +17,19 @@ def readlast(f):
     file_size = f.tell()
     if file_size == 0:
         return b""
-    
+
     buffer_size = 1024
     offset = 0
-    
+
     while True:
         offset += buffer_size
         if offset >= file_size:
             f.seek(0)
             return f.read()
-        
+
         f.seek(-offset, SEEK_END)
         buffer = f.read(buffer_size)
-        
+
         newline_pos = buffer.rfind(b"\n")
         if newline_pos != -1:
             # Found a newline. If it's the very last byte of the file, we need to keep looking
@@ -48,7 +43,7 @@ def readlast(f):
                 else:
                     # Only the trailing newline found so far, continue searching in next block
                     continue
-            
+
             f.seek(-offset + newline_pos + 1, SEEK_END)
             return f.read()
 
@@ -59,7 +54,7 @@ def upload_replay(
     platform: str | None = None,
     filename: str | None = None,
     permanent: bool = False,
-    description: str | None = None
+    description: str | None = None,
 ) -> Replay:
     replay_id = str(uuid.uuid4())
 
@@ -70,8 +65,10 @@ def upload_replay(
         last = readlast(f).decode("utf-8")
 
     # Parse the time stamps
-    start_time = datetime.datetime.fromtimestamp(float(first.split(",")[1]))
-    end_time = datetime.datetime.fromtimestamp(float(last.split(",")[1]))
+    start_time = datetime.datetime.fromtimestamp(
+        float(first.split(",")[1]), tz=pytz.UTC
+    )
+    end_time = datetime.datetime.fromtimestamp(float(last.split(",")[1]), tz=pytz.UTC)
 
     return get_replay_persistence().save_model(
         replay_id,
@@ -86,7 +83,7 @@ def upload_replay(
             permanent=permanent,
             tags=tags,
             upload_time=datetime.datetime.now(tz=pytz.utc),
-        )
+        ),
     )
 
 

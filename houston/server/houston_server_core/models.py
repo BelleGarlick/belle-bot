@@ -3,15 +3,12 @@ import uuid
 
 import pytz
 from fastapi import UploadFile
-
-from houston_server_persistence.models import Model
 from houston_server_persistence import PersistenceManager
+from houston_server_persistence.models import Model
+
 
 def get_model_persistence() -> PersistenceManager[Model]:
-    return PersistenceManager[Model](
-        "models",
-        lambda data: Model(**data)
-    )
+    return PersistenceManager[Model]("models", lambda data: Model(**data))
 
 
 def upload_model(
@@ -39,7 +36,7 @@ def upload_model(
             description=description,
             upload_time=datetime.datetime.now(tz=pytz.utc),
             size=upload.size or -1,
-        )
+        ),
     )
 
 

@@ -4,7 +4,9 @@ from houston.client.py.config import HoustonConfig
 from houston.client.py.utils import get
 
 
-def query_replays(config: HoustonConfig, page: int, tags: list[str] | None = None) -> list[dict]:
+def query_replays(
+    config: HoustonConfig, page: int, tags: list[str] | None = None
+) -> list[dict]:
     params = {}
     if page is not None:
         params["page"] = page

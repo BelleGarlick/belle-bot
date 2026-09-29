@@ -4,7 +4,6 @@ from pydantic import BaseModel
 
 
 class Replay(BaseModel):
-
     replay_id: str
 
     platform: str | None = None

@@ -4,7 +4,6 @@ from pydantic import BaseModel
 
 
 class Model(BaseModel):
-
     model_id: str
 
     # the model name amongst multiple models should remain the same such that we can
@@ -20,7 +19,7 @@ class Model(BaseModel):
 
     # this should include things like how to obtain the model
     # how it's used, yada yada yada
-    description: str = None
+    description: str | None = None
 
     upload_time: datetime
 

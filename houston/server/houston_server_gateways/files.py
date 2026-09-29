@@ -24,7 +24,7 @@ def save_upload(directory_name, upload, model_id):
     file_name = model_id + "." + file_type
     file_path = REPLAY_STORE_PATH / directory_name / file_name
 
-    os.makedirs(REPLAY_STORE_PATH / directory_name, exist_ok=True)
+    os.makedirs(file_path.parent, exist_ok=True)
 
     with open(file_path, "wb+") as destination:
         shutil.copyfileobj(upload.file, destination)

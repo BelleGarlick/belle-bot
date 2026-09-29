@@ -1,13 +1,13 @@
+from collections.abc import Callable
+from typing import Any, Generic, TypeVar
+
 import houston_server_gateways
 from houston_server_gateways.utils import get_houston_data_root
 
-
-from typing import TypeVar, Generic, Callable, Any, Optional
-
 T = TypeVar("T")
 
-class PersistenceManager(Generic[T]):
 
+class PersistenceManager(Generic[T]):
     def __init__(self, data_key: str, dict_to_model: Callable[[dict[str, Any]], T]):
         self.key = data_key
         self.dict_to_model = dict_to_model
@@ -16,11 +16,7 @@ class PersistenceManager(Generic[T]):
         houston_server_gateways.files.initialise()
 
     def save_upload(self, item_id, upload):
-        return houston_server_gateways.files.save_upload(
-            self.key,
-            upload,
-            item_id
-        )
+        return houston_server_gateways.files.save_upload(self.key, upload, item_id)
 
     def get_file_path(self, path):
         return (get_houston_data_root() / self.key / path).absolute()
@@ -32,25 +28,22 @@ class PersistenceManager(Generic[T]):
             item,
         )
 
-    def get_item(self, item_id: str) -> Optional[T]:
-        return houston_server_gateways.sqlite.get(
-            self.key,
-            item_id,
-            self.dict_to_model
-        )
+    def get_item(self, item_id: str) -> T | None:
+        return houston_server_gateways.sqlite.get(self.key, item_id, self.dict_to_model)
 
-    def query_items(self, page: int, tags: Optional[list[str]] = None) -> tuple[list[T], int]:
+    def query_items(
+        self, page: int, tags: list[str] | None = None
+    ) -> tuple[list[T], int]:
         print(tags)
         return houston_server_gateways.sqlite.query(
-            self.key,
-            page,
-            self.dict_to_model,
-            tags=tags
+            self.key, page, self.dict_to_model, tags=tags
         )
 
     def delete_item(self, item_id: str):
         item = self.get_item(item_id)
         if item:
-            if hasattr(item, 'path') and item.path:
-                houston_server_gateways.files.delete_from_store(self.get_file_path(item.path))
+            if hasattr(item, "path") and item.path:
+                houston_server_gateways.files.delete_from_store(
+                    self.get_file_path(item.path)
+                )
             houston_server_gateways.sqlite.delete(self.key, item_id)

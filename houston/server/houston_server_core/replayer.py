@@ -1,11 +1,11 @@
-import os
-import signal
-import uuid
 import json
+import os
 import random
+import signal
 import socket
 import subprocess
 import time
+import uuid
 from pathlib import Path
 
 PID_FILE = "pid.txt"
@@ -32,12 +32,12 @@ def list_replayers():
     if not os.path.exists(PID_FILE):
         return []
 
-    with open(PID_FILE, 'r') as pidfile:
+    with open(PID_FILE, "r") as pidfile:
         return json.load(pidfile)
 
 
 def save_replayers(replayers):
-    with open("pid.txt", 'w+') as pidfile:
+    with open("pid.txt", "w+") as pidfile:
         pidfile.write(json.dumps(replayers))
 
 
@@ -45,7 +45,7 @@ def is_port_in_use(port_number):
     """Returns True if the local port is currently occupied."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         try:
-            s.bind(('127.0.0.1', port_number))
+            s.bind(("127.0.0.1", port_number))
             return False
         except OSError:
             return True
@@ -74,27 +74,27 @@ def start_process(name: str, replay_ids: list[str]):
     # Start a fabric process just for this replay
     fabric_process = subprocess.Popen(
         [
-            f'{path}/.venv/bin/python',
-            f'{path}/belle_bot/fabric/service.py',
+            f"{path}/.venv/bin/python",
+            f"{path}/belle_bot/fabric/service.py",
         ],
         shell=False,
         env={
             **common_env,
-            "REPLAYS": ','.join(replay_ids),
-        }
+            "REPLAYS": ",".join(replay_ids),
+        },
     )
 
     # Start a replay process to run on the fabric server
     replay_process = subprocess.Popen(
         [
-            f'{path}/.venv/bin/python',
-            f'{path}/belle_bot/infra/replays/replayer.py',
+            f"{path}/.venv/bin/python",
+            f"{path}/belle_bot/infra/replays/replayer.py",
         ],
         shell=False,
         env={
             **common_env,
-            "REPLAYS": ','.join(replay_ids),
-        }
+            "REPLAYS": ",".join(replay_ids),
+        },
     )
 
     data = {
@@ -104,13 +104,11 @@ def start_process(name: str, replay_ids: list[str]):
         "replay_ids": replay_ids,
         "start_time": time.time(),
         "fabric_pid": fabric_process.pid,
-        "replay_pid": replay_process.pid
+        "replay_pid": replay_process.pid,
     }
 
     # Save to a pid file
-    save_replayers(list_replayers() + [
-        data
-    ])
+    save_replayers(list_replayers() + [data])
 
     return data
 
@@ -118,10 +116,10 @@ def start_process(name: str, replay_ids: list[str]):
 def stop_replayer(replayer_id: str):
     replayers = list_replayers()
     for replayer in replayers:
-        if not replayer['replayer_id'] == replayer_id:
+        if replayer["replayer_id"] != replayer_id:
             continue
 
-        os.kill(replayer['fabric_pid'], signal.SIGTERM)
-        os.kill(replayer['replay_pid'], signal.SIGTERM)
+        os.kill(replayer["fabric_pid"], signal.SIGTERM)
+        os.kill(replayer["replay_pid"], signal.SIGTERM)
 
-    save_replayers([x for x in replayers if x['replayer_id'] != replayer_id])
+    save_replayers([x for x in replayers if x["replayer_id"] != replayer_id])

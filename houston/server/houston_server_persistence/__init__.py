@@ -1,1 +1,1 @@
-from .persistence_manager import PersistenceManager
+from .persistence_manager import PersistenceManager as PersistenceManager
