@@ -4,7 +4,7 @@ import torch.onnx
 from belle_bot.vision.encoder.training.ml_model import VAE2_448
 import os
 
-
+        
 class EncoderWrapper(torch.nn.Module):
     def __init__(self, vae):
         super().__init__()
