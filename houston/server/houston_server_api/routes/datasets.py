@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, File, Form, HTTPException, Query, Response, UploadFile
 from fastapi.responses import FileResponse
 from houston_server_core import datasets as core
@@ -19,24 +21,33 @@ class DatasetListResponse(BaseModel):
     description="Uploads a WebDataset format file and creates a new dataset record with tags and description.",
 )
 async def upload_dataset(
-    file: UploadFile = File(..., description="The dataset file to upload (tar/tar.gz)"),
-    tags: list[str] = Form(
-        default_factory=list,
-        description="List of tags or a comma-separated string of tags",
-    ),
-    description: str | None = Form(
-        default=None, description="Detailed description of the dataset"
-    ),
-    path: str | None = Form(
-        default=None,
-        description="Custom path/name for the dataset (e.g. 'vision/encoder/v1/train')",
-    ),
+    file: Annotated[
+        UploadFile, File(description="The dataset file to upload (tar/tar.gz)")
+    ],
+    tags: Annotated[
+        list[str] | None,
+        Form(
+            description="List of tags or a comma-separated string of tags",
+        ),
+    ] = None,
+    description: Annotated[
+        str | None, Form(description="Detailed description of the dataset")
+    ] = None,
+    path: Annotated[
+        str | None,
+        Form(
+            description="Custom path/name for the dataset (e.g. 'vision/encoder/v1/train')"
+        ),
+    ] = None,
 ) -> Dataset:
     """
     Upload a new dataset.
 
     If tags contains a single string with commas, it will be split into multiple tags.
     """
+    if tags is None:
+        tags = []
+
     if len(tags) == 1 and "," in tags[0]:
         tags = [t.strip() for t in tags[0].split(",")]
 
@@ -52,10 +63,10 @@ async def upload_dataset(
     description="Retrieves a paginated list of datasets, optionally filtered by tags.",
 )
 async def list_datasets(
-    page: int | None = Query(None, description="Page number for pagination"),
-    tags: list[str] | None = Query(
-        None, description="Filter datasets by one or more tags"
-    ),
+    page: Annotated[int | None, Query(description="Page number for pagination")] = None,
+    tags: Annotated[
+        list[str] | None, Query(description="Filter datasets by one or more tags")
+    ] = None,
 ) -> DatasetListResponse:
     """List all available datasets with optional tag filtering."""
     datasets, count = core.query_datasets(page or 0, tags=tags)
@@ -82,10 +93,9 @@ async def get_dataset_file(dataset_id: str) -> FileResponse:
         raise HTTPException(status_code=404, detail="Dataset file not found")
 
     filename = dataset.path or f"{dataset.dataset_id}.tar"
-    if not filename.endswith((".tar", ".tar.gz", ".tgz")):
+    if not filename.endswith((".tar", ".tar.gz", ".tgz")) and "." not in filename:
         # Ensure it has a reasonable extension if we can't tell
-        if "." not in filename:
-            filename += ".tar"
+        filename += ".tar"
 
     return FileResponse(
         path=file_path, media_type="application/octet-stream", filename=filename

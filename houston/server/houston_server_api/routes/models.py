@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, File, Form, HTTPException, Query, Response, UploadFile
 from houston_server_core import models as core
 from houston_server_persistence.models import Model
@@ -18,22 +20,34 @@ class ModelListResponse(BaseModel):
     description="Uploads a model file (or .zip for a directory) and creates a new model record with name, version, and metadata.",
 )
 async def upload_model(
-    file: UploadFile = File(..., description="The model file to upload (.zip for directories)"),
-    name: str = Form(..., description="Name of the model (its path)"),
-    version: str = Form(..., description="Version string for the model"),
-    tags: list[str] = Form(
-        default_factory=list,
-        description="List of tags or a comma-separated string of tags",
-    ),
-    description: str = Form(..., description="Detailed description of the model"),
+    file: Annotated[
+        UploadFile, File(description="The model file to upload (.zip for directories)")
+    ],
+    name: Annotated[str, Form(description="Name of the model (its path)")],
+    version: Annotated[str, Form(description="Version string for the model")],
+    tags: Annotated[
+        list[str] | None,
+        Form(
+            description="List of tags or a comma-separated string of tags",
+        ),
+    ] = None,
+    description: Annotated[
+        str | None, Form(description="Detailed description of the model")
+    ] = None,
 ) -> Model:
     """
     Upload a new model.
 
     If tags contains a single string with commas, it will be split into multiple tags.
     """
+    if tags is None:
+        tags = []
+
     if len(tags) == 1 and "," in tags[0]:
         tags = [t.strip() for t in tags[0].split(",")]
+
+    if description is None:
+        raise HTTPException(status_code=422, detail="description is required")
 
     return core.upload_model(
         name=name,
@@ -51,9 +65,9 @@ async def upload_model(
     description="Retrieves a paginated list of models.",
 )
 async def list_models(
-    page: int | None = Query(None, description="Page number for pagination"),
-    name: str | None = Query(None, description="Filter by model name"),
-    tags: list[str] | None = Query(None, description="Filter by tags"),
+    page: Annotated[int | None, Query(description="Page number for pagination")] = None,
+    name: Annotated[str | None, Query(description="Filter by model name")] = None,
+    tags: Annotated[list[str] | None, Query(description="Filter by tags")] = None,
 ) -> ModelListResponse:
     """List all available models, optionally filtered by name or tags."""
     if tags and len(tags) == 1 and "," in tags[0]:
@@ -153,8 +167,10 @@ async def get_model_info(model_id: str) -> Model:
 )
 async def upload_model_file(
     model_id: str,
-    file: UploadFile = File(..., description="The file to upload"),
-    relative_path: str = Form(..., description="The relative path where the file should be stored"),
+    file: Annotated[UploadFile, File(description="The file to upload")],
+    relative_path: Annotated[
+        str, Form(description="The relative path where the file should be stored")
+    ],
 ) -> Model:
     """Upload an individual file to an existing model."""
     try:

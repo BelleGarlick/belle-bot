@@ -53,10 +53,11 @@ def create_replayer(payload: StartReplayerRequest):
         data = start_process(name=payload.name, replay_ids=payload.replay_ids)
         return data
     except Exception as e:
+        # Re-raise as HTTPException with original error context
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to start replayer processes: {e!s}",
-        )
+        ) from e
 
 
 @replayer_router.delete(
@@ -81,7 +82,8 @@ def terminate_replayer(replayer_id: str):
         # Gracefully handle cases where the process terminated prior to API call
         pass
     except Exception as e:
+        # Re-raise as HTTPException with original error context
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to kill process group for {replayer_id}: {e!s}",
-        )
+        ) from e

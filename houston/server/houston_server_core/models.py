@@ -1,8 +1,6 @@
 import datetime
 import os
-import shutil
 import uuid
-from pathlib import Path
 
 import pytz
 from fastapi import UploadFile

@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, File, Form, HTTPException, Query, Response, UploadFile
 from fastapi.responses import FileResponse
 from houston_server_core import replays as core
@@ -19,29 +21,34 @@ class ReplayListResponse(BaseModel):
     description="Uploads a replay file and creates a new replay record with metadata.",
 )
 async def upload_replay(
-    file: UploadFile = File(..., description="The replay file to upload"),
-    filename: str | None = Form(
-        default=None, description="Original filename of the replay"
-    ),
-    platform: str | None = Form(
-        default=None, description="Platform where the replay was recorded"
-    ),
-    tags: list[str] = Form(
-        default_factory=list,
-        description="List of tags or a comma-separated string of tags",
-    ),
-    description: str | None = Form(
-        default=None, description="Detailed description of the replay"
-    ),
-    permanent: bool = Form(
-        default=False, description="Whether to mark the replay as permanent"
-    ),
+    file: Annotated[UploadFile, File(description="The replay file to upload")],
+    filename: Annotated[
+        str | None, Form(description="Original filename of the replay")
+    ] = None,
+    platform: Annotated[
+        str | None, Form(description="Platform where the replay was recorded")
+    ] = None,
+    tags: Annotated[
+        list[str] | None,
+        Form(
+            description="List of tags or a comma-separated string of tags",
+        ),
+    ] = None,
+    description: Annotated[
+        str | None, Form(description="Detailed description of the replay")
+    ] = None,
+    permanent: Annotated[
+        bool, Form(description="Whether to mark the replay as permanent")
+    ] = False,
 ) -> Replay:
     """
     Upload a new replay.
 
     If tags contains a single string with commas, it will be split into multiple tags.
     """
+    if tags is None:
+        tags = []
+
     if len(tags) == 1 and "," in tags[0]:
         tags = [t.strip() for t in tags[0].split(",")]
 
@@ -62,10 +69,10 @@ async def upload_replay(
     description="Retrieves a paginated list of replays, optionally filtered by tags.",
 )
 async def list_replays(
-    page: int | None = Query(None, description="Page number for pagination"),
-    tags: list[str] | None = Query(
-        None, description="Filter replays by one or more tags"
-    ),
+    page: Annotated[int | None, Query(description="Page number for pagination")] = None,
+    tags: Annotated[
+        list[str] | None, Query(description="Filter replays by one or more tags")
+    ] = None,
 ) -> ReplayListResponse:
     """List all available replays with optional tag filtering."""
     replays, count = core.query_replays(page or 0, tags=tags)

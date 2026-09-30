@@ -108,7 +108,7 @@ def save_model_file(directory_name, upload, model_id, relative_path):
     """
     dir_path = REPLAY_STORE_PATH / directory_name / model_id
     file_path = dir_path / relative_path
-    
+
     # Security check: ensure file_path is within dir_path
     if not str(file_path.resolve()).startswith(str(dir_path.resolve())):
         raise ValueError("Invalid relative path")
@@ -127,15 +127,15 @@ def save_model_dir(directory_name, upload, model_id):
     """
     file_type = upload.filename.split(".")[-1]
     if file_type.lower() == "zip":
-        import zipfile
         import io
-        
+        import zipfile
+
         dir_path = REPLAY_STORE_PATH / directory_name / model_id
         os.makedirs(dir_path, exist_ok=True)
-        
+
         with zipfile.ZipFile(io.BytesIO(upload.file.read())) as zip_ref:
             zip_ref.extractall(dir_path)
-        
+
         return str(model_id)
     else:
         # Fallback to single file save if not a zip
