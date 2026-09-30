@@ -1,7 +1,7 @@
 import json
 import sqlite3
 from collections.abc import Callable
-from typing import TypeVar
+from typing import Any, TypeVar
 
 from houston_server_gateways.utils import get_houston_data_root
 from pydantic import BaseModel
@@ -71,20 +71,25 @@ def query(
     page_size: int = 50,
     tags: list[str] | None = None,
     match_all_tags: bool = True,
+    filter_dict: dict[str, Any] | None = None,
 ) -> tuple[list[TReturn], int]:
     conn = get_connection()
     try:
         cursor = conn.cursor()
         offset = max(0, page) * page_size
 
+        where_clauses = []
+        params = []
+
         clean_tags = [str(t).strip() for t in (tags or []) if str(t).strip()]
 
         if clean_tags:
             placeholders = ",".join(["?"] * len(clean_tags))
+            params.extend(clean_tags)
 
             if match_all_tags:
                 # Requires record to match ALL tags in clean_tags
-                where_clause = f"""
+                tag_clause = f"""
                     json_type({table}.data, '$.tags') = 'array'
                     AND (
                         SELECT COUNT(DISTINCT json_each.value)
@@ -95,7 +100,7 @@ def query(
                 """
             else:
                 # Requires record to match AT LEAST ONE tag in clean_tags
-                where_clause = f"""
+                tag_clause = f"""
                     json_type({table}.data, '$.tags') = 'array'
                     AND EXISTS (
                         SELECT 1 
@@ -104,31 +109,33 @@ def query(
                           AND json_each.value IN ({placeholders})
                     )
                 """
+            where_clauses.append(tag_clause)
 
-            sql_query = f"""
-                SELECT data 
-                FROM {table}
-                WHERE {where_clause}
-                LIMIT ? OFFSET ?
-            """
-            cursor.execute(sql_query, (*clean_tags, page_size, offset))
-            rows = cursor.fetchall()
+        if filter_dict:
+            for key, value in filter_dict.items():
+                where_clauses.append(f"json_extract({table}.data, '$.{key}') = ?")
+                params.append(value)
 
-            sql_count_query = f"""
-                SELECT COUNT(*) 
-                FROM {table}
-                WHERE {where_clause}
-            """
-            cursor.execute(sql_count_query, clean_tags)
-            count = cursor.fetchone()[0]
-        else:
-            sql_query = f"SELECT data FROM {table} LIMIT ? OFFSET ?"
-            cursor.execute(sql_query, (page_size, offset))
-            rows = cursor.fetchall()
+        where_stmt = ""
+        if where_clauses:
+            where_stmt = "WHERE " + " AND ".join(where_clauses)
 
-            sql_count_query = f"SELECT count(*) FROM {table}"
-            cursor.execute(sql_count_query)
-            count = cursor.fetchone()[0]
+        sql_query = f"""
+            SELECT data 
+            FROM {table}
+            {where_stmt}
+            LIMIT ? OFFSET ?
+        """
+        cursor.execute(sql_query, (*params, page_size, offset))
+        rows = cursor.fetchall()
+
+        sql_count_query = f"""
+            SELECT COUNT(*) 
+            FROM {table}
+            {where_stmt}
+        """
+        cursor.execute(sql_count_query, params)
+        count = cursor.fetchone()[0]
 
         return [callback(json.loads(row["data"])) for row in rows], count
     finally:

@@ -23,5 +23,8 @@ class Model(BaseModel):
 
     upload_time: datetime
 
-    # The file size
+    # The file size or total size of directory
     size: int
+
+    # Is it a directory
+    is_dir: bool = False
