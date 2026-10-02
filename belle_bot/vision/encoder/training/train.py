@@ -37,6 +37,8 @@ test_loader = DataLoader(test_dataset, batch_size=None, num_workers=2, pin_memor
 #  possibly drop input data and have the model try and predict both
 #  have an automated pipeline for tagging items if their error is high enough
 
+raise Exception("future work should ranodmly mask out parts of the input depth")
+
 def sample_model(step, train_batch, test_batch):
     cm = plt.get_cmap('rainbow')
 

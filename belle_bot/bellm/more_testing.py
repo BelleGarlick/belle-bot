@@ -22,7 +22,6 @@ if __name__ == "__main__":
         messages,
         tokenize=False,
         add_generation_prompt=True,
-        enable_thinking=False # Switches between thinking and non-thinking modes. Default is True.
     )
     model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
 
