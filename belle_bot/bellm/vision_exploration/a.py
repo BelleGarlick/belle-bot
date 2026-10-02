@@ -1,5 +1,8 @@
 import os
 import gc
+from collections import deque
+
+import numpy as np
 import requests
 import torch
 import torch.nn as nn
@@ -13,6 +16,12 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 DEVICE = "mps"
 BATCH_SIZE = 1
 MAX_TEXT_LEN = 512
+
+# todo
+#  randomly sample the subsets
+#  have encoder split to different patches
+#  clean up code and make easier to use. possibly a way to plug into the image encoder so this trains during the image encoder training too
+#  have a way to interact with the saved model
 
 # 1. Dataset & Local Storage Configuration
 dataset_name = "nvidia/Nemotron-Image-Training-v3"
@@ -274,6 +283,7 @@ if __name__ == "__main__":
     model.train()
     print(f"Starting batched training (Batch Size = {BATCH_SIZE})...")
 
+    running_loss = deque(maxlen=100)
     for step, (input_ids_list, labels_list, image_tensors_list) in enumerate(dataloader):
         if not input_ids_list:
             continue
@@ -296,10 +306,11 @@ if __name__ == "__main__":
             optimizer.step()
             optimizer.zero_grad()
 
-            if (step + 1) % 10 == 0:
+            running_loss.append(loss.item())
+            if (step + 1) % 100 == 0:
                 torch.mps.empty_cache()
                 gc.collect()
-                print(f"Step {step + 1} | Alignment Loss: {loss.item():.4f}")
+                print(f"Step {step + 1} | Alignment Loss: {np.mean(running_loss):.4f}")
 
         if step >= 10_000:
             break

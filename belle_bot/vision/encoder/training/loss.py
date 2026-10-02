@@ -122,16 +122,16 @@ class OptimizedVaeLoss(nn.Module):
         self.depth_weight = depth_weight
         self.grad_weight = grad_weight
 
-    def forward(self, recon_x, x, mu, logvar, kl_beta=0.0005):
+    def forward(self, recon_x, y, mu, logvar, kl_beta=0.0005):
         recon_rgb, recon_depth = recon_x[:, :3, :, :], recon_x[:, 3:, :, :]
-        rgb, depth = x[:, :3, :, :], x[:, 3:, :, :]
+        rgb, depth = y[:, :3, :, :], y[:, 3:, :, :]
 
         # Pixel Reconstruction Loss
         rgb_loss = F.l1_loss(recon_rgb, rgb)
 
-        depth_mask = (depth > 0.005).float()
-        depth_loss = F.l1_loss(recon_depth * depth_mask, depth * depth_mask, reduction='sum')
-        depth_loss = depth_loss / (depth_mask.sum() + 1e-8)
+        depth_loss_mask = (depth > 0.005).float()
+        depth_loss = F.l1_loss(recon_depth * depth_loss_mask, depth * depth_loss_mask, reduction='sum')
+        depth_loss = depth_loss / (depth_loss_mask.sum() + 1e-8)
 
         recon_loss = rgb_loss + (self.depth_weight * depth_loss)
 

@@ -1,11 +1,15 @@
 import base64
 import json
-from pathlib import Path
 from typing import Literal
 
 import random
+import multiprocessing as mp
+from functools import partial
 
+import numpy as np
+import opensimplex
 import webdataset as wds
+from tqdm import tqdm
 
 from belle_bot.utils.cli import clpy
 from belle_bot.vision.encoder.config.vision_encoder_dataset_creation_config import VisionEncoderDatasetCreationConfig
@@ -31,8 +35,41 @@ def get_replay_ids(subset: Literal["train", "test"] | None):
     return sorted([x["replay_id"] for x in replay_ids])
 
 
-def create_dataset(subset: Literal["train", "test"], pattern: Path, shuffle=True):
-    replay_ids = get_replay_ids(subset)
+def generate_single_mask(idx, size):
+    gen = opensimplex.OpenSimplex(seed=idx)
+    x_idxs = np.arange(size)
+    y_idxs = np.arange(size)
+
+    low_freq = gen.noise2array(x=x_idxs / 200,
+                               y=y_idxs / 200) * 0.8
+    high_freq = gen.noise2array(x=size + x_idxs / 30,
+                                y=size + y_idxs / 30) * 0.2
+
+    total_noise = ((low_freq + high_freq) + 1) / 2
+    mask = np.zeros((size, size), dtype=np.uint8)
+    mask[total_noise > 0.65] = 1
+    return mask
+
+
+def create_masks(config: VisionEncoderDatasetCreationConfig):
+    if not config.mask:
+        return None
+
+    print(f"Generating {config.mask.count} masks using {mp.cpu_count()} processes...")
+
+    with mp.Pool(processes=mp.cpu_count()) as pool:
+        func = partial(generate_single_mask, size=config.mask.size)
+        masks = list(tqdm(pool.imap(func, range(config.mask.count)), total=config.mask.count, desc="Generating masks"))
+
+    print("Finished generating masks")
+
+    return np.array(masks, dtype=np.uint8)
+
+
+def create_dataset(shuffle=True):
+    replay_ids = get_replay_ids(config.subset)
+
+    masks = create_masks(config)
 
     # todo at somepoint this may cause memory to grow too large.
     #  at which point we will need to create numerous dataset files
@@ -52,7 +89,7 @@ def create_dataset(subset: Literal["train", "test"], pattern: Path, shuffle=True
 
         frame_idx = 0
         for line in lines:
-            print(f"\r{subset} Reading {replay_idx}/{len(replay_ids)} {replay_id}", end="")
+            print(f"\r{config.subset} Reading {replay_idx}/{len(replay_ids)} {replay_id}", end="")
 
             split_tokens = line.split(",")
             if len(split_tokens) < 3:
@@ -79,16 +116,14 @@ def create_dataset(subset: Literal["train", "test"], pattern: Path, shuffle=True
 
                 frame_idx += 1
 
-    print(f"\n{subset} Total items collected: {len(all_items)} (skipped {skipped_frames}). {'Shuffling...' if shuffle else ''}")
+    print(f"\n{config.subset} Total items collected: {len(all_items)} (skipped {skipped_frames}). {'Shuffling...' if shuffle else ''}")
     if shuffle:
         random.shuffle(all_items)
 
     with (
-        wds.ShardWriter(str(pattern), maxcount=config.max_partition_size) as writer
+        wds.ShardWriter(str(config.path), maxcount=config.max_partition_size) as writer
     ):
-        for item_count, item in enumerate(all_items):
-            print(f"\r{subset} Writing {item_count}/{len(all_items)}", end="")
-
+        for item_count, item in enumerate(tqdm(all_items, desc=f"{config.subset} Writing")):
             try:
                 rgb_bytes = base64.b64decode(item['rgb'])
                 depth_bytes = base64.b64decode(item['depth'])
@@ -96,7 +131,7 @@ def create_dataset(subset: Literal["train", "test"], pattern: Path, shuffle=True
                 rgb_bytes = item['rgb']
                 depth_bytes = item['depth']
 
-            writer.write({
+            data_to_write = {
                 "__key__": f"{item_count}",
                 "rgb": rgb_bytes,
                 "depth": depth_bytes,
@@ -105,19 +140,21 @@ def create_dataset(subset: Literal["train", "test"], pattern: Path, shuffle=True
                     "replay_id": item['replay_id'],
                     "timestamp": item['timestamp'],
                 },
-            })
+            }
+
+            if masks is not None:
+                mask_idx = random.randint(0, len(masks) - 1)
+                mask = masks[mask_idx]
+                
+                # Randomly rotate the mask
+                rotation_k = random.randint(0, 3)
+                mask = np.rot90(mask, k=rotation_k)
+                
+                data_to_write["depth_mask"] = mask.tobytes()
+
+            writer.write(data_to_write)
     print()
 
 
 if __name__ == "__main__":
-    output_dir = Path(config.output_dir)
-
-    create_dataset(
-        "train",
-        output_dir / "train-%06d.tar",
-    )
-
-    create_dataset(
-        "test",
-        output_dir / "test-%06d.tar"
-    )
+    create_dataset()

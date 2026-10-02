@@ -31,9 +31,6 @@ train_loader = DataLoader(train_dataset, batch_size=None, num_workers=4, pin_mem
 test_loader = DataLoader(test_dataset, batch_size=None, num_workers=2, pin_memory=pin_memory)
 
 
-raise Exception("future work should ranodmly mask out parts of the input depth. use perlin noise to create the mask")
-
-
 def sample_model(step, train_samples, test_samples, target_count=16):
     """
     Renders up to `target_count` samples in a dynamic grid layout.
@@ -131,16 +128,17 @@ if __name__ == "__main__":
             mlflow.log_params(clpy.to_dict(config))
 
         epoch_loss_train = deque(maxlen=2000)
-        for step, batch in enumerate(train_dl):
+        for step, (batch_x, batch_y) in enumerate(train_dl):
             if step >= config.max_steps:
                 break
 
             # Buffer training samples (detach & cpu to save GPU memory)
             if train_buffer_count < TARGET_SAMPLE_COUNT:
-                train_sample_buffer.append(batch.detach().cpu())
-                train_buffer_count += batch.shape[0]
+                train_sample_buffer.append(batch_x.detach().cpu())
+                train_buffer_count += batch_x.shape[0]
 
-            batch = batch.to(DEVICE)
+            batch_x = batch_x.to(DEVICE)
+            batch_y = batch_y.to(DEVICE)
             model.to(DEVICE)
 
             percentage_complete = step / config.max_steps
@@ -154,10 +152,10 @@ if __name__ == "__main__":
             model.train()
             optimizer.zero_grad()
 
-            recon_images, mu, logvar = model(batch)
+            recon_images, mu, logvar = model(batch_x)
             # KL Annealing: start at 0, increase to 1
             kl_beta = percentage_complete * config.kl_annealing
-            loss = loss_fn(recon_images, batch, mu, logvar, kl_beta=kl_beta)
+            loss = loss_fn(recon_images, batch_y, mu, logvar, kl_beta=kl_beta)
 
             # Train the model
             loss["loss"].backward()
@@ -179,7 +177,7 @@ if __name__ == "__main__":
 
                 model.eval()
                 with torch.no_grad():
-                    for val_step, batch_val in enumerate(test_dl):
+                    for val_step, (batch_val_x, batch_val_y) in enumerate(test_dl):
                         if val_step >= config.max_val_steps:
                             break
 
@@ -191,9 +189,9 @@ if __name__ == "__main__":
                         batch_val = batch_val.to(DEVICE)
                         model.to(DEVICE)
 
-                        recon_images, mu, logvar = model(batch_val)
+                        recon_images, mu, logvar = model(batch_val_x)
                         kl_beta = min(1.0, step / (config.max_steps * 0.1)) * config.kl_annealing
-                        loss = loss_fn(recon_images, batch_val, mu, logvar, kl_beta=kl_beta)
+                        loss = loss_fn(recon_images, batch_val_y, mu, logvar, kl_beta=kl_beta)
 
                         epoch_loss_val.append(loss)
 

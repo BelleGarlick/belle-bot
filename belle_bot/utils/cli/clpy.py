@@ -55,32 +55,54 @@ def to_dict(config: Union[BaseModel, dict]) -> dict:
     return flatten(config)
 
 
-def parse_cli_args[T](default_args: T) -> T:
+def parse_cli_args[T: BaseModel](default_args: T) -> T:
     print(sys.argv)
 
-    args_dict = {}
-    for key, item in to_dict(default_args).items():
-        args_dict["--" + key] = item
-
-    # todo update this whole method its stupid
-    for i in range(len(sys.argv)):
-        if sys.argv[i] == "-h" or sys.argv[i] == "--help":
-            print_help(default_args)
+    # 1. Flatten the existing config to know what keys we expect
+    flat_config = to_dict(default_args)
+    
+    # 2. Extract overrides from sys.argv
+    overrides = {}
+    i = 1
+    while i < len(sys.argv):
+        arg = sys.argv[i]
+        if arg == "-h" or arg == "--help":
+            print_help(default_args.__class__)
             sys.exit()
+        
+        if arg.startswith("--"):
+            key = arg[2:]
+            if key in flat_config:
+                if i + 1 < len(sys.argv):
+                    overrides[key] = sys.argv[i+1]
+                    i += 1
+        i += 1
 
-        key = sys.argv[i]
-        if key in args_dict and sys.argv[i].startswith("--"):
-            args_dict[key] = sys.argv[i + 1]
-            # todo update the args
-            # todo somehow parse
+    # 3. Create a nested dictionary from the flattened overrides
+    def unflatten(d):
+        result = {}
+        for key, value in d.items():
+            parts = key.split(".")
+            current = result
+            for part in parts[:-1]:
+                current = current.setdefault(part, {})
+            current[parts[-1]] = value
+        return result
 
-    # todo, do this above so we dont need to update the args dict
-    for key, value in args_dict.items():
-        key = key.replace("--", "")
-        tokens = key.split(".")
-        current_arg_level = default_args
-        for i in range(len(tokens) - 1):
-            current_arg_level = getattr(current_arg_level, tokens[i])
-        setattr(current_arg_level, tokens[-1], value)
+    nested_overrides = unflatten(overrides)
 
-    return default_args
+    # 4. Update the default model dump with overrides
+    def deep_update(mapping, *updating_mappings):
+        updated_mapping = mapping.copy()
+        for updating_mapping in updating_mappings:
+            for k, v in updating_mapping.items():
+                if k in updated_mapping and isinstance(updated_mapping[k], dict) and isinstance(v, dict):
+                    updated_mapping[k] = deep_update(updated_mapping[k], v)
+                else:
+                    updated_mapping[k] = v
+        return updated_mapping
+
+    updated_dict = deep_update(default_args.model_dump(), nested_overrides)
+
+    # 5. Create a new instance of the model with the updated dictionary to trigger validation/casting
+    return default_args.__class__.model_validate(updated_dict)
