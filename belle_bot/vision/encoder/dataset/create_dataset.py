@@ -17,7 +17,7 @@ config = clpy.parse_cli_args(VisionEncoderDatasetCreationConfig())
 clpy.print_values(config)
 
 
-def get_replay_ids(subset: Literal["train", "eval"] | None):
+def get_replay_ids(subset: Literal["train", "test"] | None):
     filter = ["dataset/vision/encoder"]
     if subset:
         filter += [subset]
@@ -31,7 +31,7 @@ def get_replay_ids(subset: Literal["train", "eval"] | None):
     return sorted([x["replay_id"] for x in replay_ids])
 
 
-def create_dataset(subset: Literal["train", "eval"], pattern: Path, shuffle=True):
+def create_dataset(subset: Literal["train", "test"], pattern: Path, shuffle=True):
     replay_ids = get_replay_ids(subset)
 
     # todo at somepoint this may cause memory to grow too large.
@@ -118,6 +118,6 @@ if __name__ == "__main__":
     )
 
     create_dataset(
-        "eval",
+        "test",
         output_dir / "test-%06d.tar"
     )

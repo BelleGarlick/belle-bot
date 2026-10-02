@@ -43,7 +43,10 @@ def _parse_events(config: PositioningConfig, replay_id: str):
         split_tokens = line.split(",")
         stream = split_tokens[0]
         timestamp = float(split_tokens[1])
-        data = json.loads(",".join(split_tokens[2:]))
+        try:
+            data = json.loads(",".join(split_tokens[2:]))
+        except Exception as e:
+            raise Exception("Invalid replay file: " + replay_id)
 
         if stream == "sensors/gps":
             if data['has_fix'] == "True":
