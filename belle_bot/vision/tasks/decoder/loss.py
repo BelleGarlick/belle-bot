@@ -10,13 +10,14 @@ class LightweightPerceptualLoss(nn.Module):
     Hardware-friendly perceptual loss using MobileNetV3-Small features across multiple depths.
     Uses ~2.5M parameters vs VGG16's ~14M+ parameters.
     """
+
     def __init__(self):
         super().__init__()
         weights = MobileNet_V3_Small_Weights.DEFAULT
         features = mobilenet_v3_small(weights=weights).features.eval()
 
         # Multi-scale feature slices
-        self.slice1 = features[:2]   # Low-level textures (16 channels)
+        self.slice1 = features[:2]  # Low-level textures (16 channels)
         self.slice2 = features[2:4]  # Mid-level details (24 channels)
         self.slice3 = features[4:9]  # Higher-level semantics (48 channels)
 
@@ -46,7 +47,7 @@ class LightweightPerceptualLoss(nn.Module):
         # We only apply perceptual loss to the RGB channels if 4 channels are present
         x_in = x[:, :3, :, :]
         y_in = y[:, :3, :, :]
-        
+
         x_norm = self.normalize(x_in)
         y_norm = self.normalize(y_in)
 
@@ -122,7 +123,7 @@ class OptimizedVaeLoss(nn.Module):
         self.depth_weight = depth_weight
         self.grad_weight = grad_weight
 
-    def forward(self, recon_x, y, mu, logvar, kl_beta=0.0005):
+    def forward(self, recon_x, y):
         recon_rgb, recon_depth = recon_x[:, :3, :, :], recon_x[:, 3:, :, :]
         rgb, depth = y[:, :3, :, :], y[:, 3:, :, :]
 
@@ -141,14 +142,10 @@ class OptimizedVaeLoss(nn.Module):
         # Perceptual Loss on unscaled resolution
         perc_loss = self.perceptual_loss(recon_rgb, rgb)
 
-        # KL Loss
-        kl_loss = -0.5 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
-
         total_loss = (
                 recon_loss
                 + (self.perceptual_weight * perc_loss)
                 + (self.grad_weight * edge_loss)
-                + (kl_beta * kl_loss)
         )
 
         return {
@@ -157,5 +154,4 @@ class OptimizedVaeLoss(nn.Module):
             "rgb_loss": rgb_loss.detach(),
             "depth_loss": depth_loss.detach(),
             "perc_loss": perc_loss.detach(),
-            "kl_loss": kl_loss.detach()
         }
