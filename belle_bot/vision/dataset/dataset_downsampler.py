@@ -6,8 +6,8 @@ import torch
 import webdataset as wds
 
 from belle_bot.utils.cli import clpy
-from belle_bot.vision.encoder.config.vision_encoder_dataset_creation_config import VisionEncoderDatasetCreationConfig
-from belle_bot.vision.encoder.training.data_loader import custom_decoder, merge
+from belle_bot.vision.config.vision_encoder_dataset_creation_config import VisionEncoderDatasetCreationConfig
+from belle_bot.vision.training.data_loader import custom_decoder, merge
 
 
 def load_encoder(model_path: str):
@@ -52,7 +52,7 @@ def get_embeddings(encoder, dataset_path):
     return np.array(embeddings, dtype=np.float32), keys
 
 
-def compute_near_counts_batched(embeddings, threshold=0.995, batch_size=1000):
+def compute_near_counts_batched(embeddings, threshold=0.99, batch_size=1000):
     num_samples = embeddings.shape[0]
     near_counts = np.zeros(num_samples, dtype=np.int32)
 
@@ -88,7 +88,7 @@ if __name__ == "__main__":
     if len(embeddings) == 0:
         raise Exception("No items found in dataset.")
 
-    threshold = 0.995
+    threshold = 0.99
     near_counts = compute_near_counts_batched(embeddings, threshold=threshold, batch_size=1000)
 
     frequency_map = {key: int(value) for key, value in zip(keys, near_counts)}

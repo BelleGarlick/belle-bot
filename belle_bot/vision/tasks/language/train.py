@@ -7,9 +7,9 @@ import torch
 from PIL import Image
 from transformers import AutoTokenizer
 
-from tasks.encoder.data_loader import merge
-from tasks.language.loss import VisionLossModule
-from tasks.utils.models import VisualCortexStepArgs
+from belle_bot.vision.tasks.encoder.data_loader import merge
+from belle_bot.vision.tasks.language.loss import VisionLossModule
+from belle_bot.vision.tasks.utils.models import VisualCortexStepArgs
 
 BATCH_SIZE = 1
 MAX_TEXT_LEN = 512

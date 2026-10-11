@@ -1,10 +1,10 @@
 from pydantic import BaseModel
 
-from belle_bot.vision.encoder.config.vision_encoder_model_config import VisionEncoderModelConfig
+from belle_bot.vision.config.vision_encoder_model_config import VisionEncoderModelConfig
 from houston.client.py.config import HoustonConfig
 
 
-class VisionEncoderTrainingConfig(BaseModel):
+class VisionEncoderVideoConfig(BaseModel):
 
     model: VisionEncoderModelConfig = VisionEncoderModelConfig()
 

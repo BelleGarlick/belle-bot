@@ -16,7 +16,7 @@ def get_task_definition(config: VisionEncoderTrainingConfig, device: torch.devic
     :param device: The device being used
     :return: The decoder config
     """
-    mdl = model.VisualCortexDecoder(latent_dim=config.model.embedding_size).to(device)
+    mdl = model.VisualCortexSegmentationDecoder(latent_dim=config.model.embedding_size).to(device)
 
     # Load checkpoint and freeze model
     if config.model.detection.file_path:

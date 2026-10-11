@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 
 from belle_bot.mapping.positioning.config.positioning_config import MlFlowConfig
-from belle_bot.vision.encoder.config.vision_encoder_model_config import VisionEncoderModelConfig
+from belle_bot.vision.config.vision_encoder_model_config import VisionEncoderModelConfig
 from houston.client.py.config import HoustonConfig
 
 
@@ -28,7 +28,7 @@ class VisionEncoderTrainingConfig(BaseModel):
     # The number of samplers per update
     mini_batch_size: int = Field(4, description="The number of samplers per update")
 
-    # The optimiser learning rate
+    # The optimizer learning rate
     learning_rate: float = Field(1e-3, description="The optimiser learning rate")
 
     # The rate to which the learning rate decays. lr = lr * (1- (step/max_steps)^gamma)

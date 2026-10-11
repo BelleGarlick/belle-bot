@@ -57,7 +57,7 @@ class SubPixelUpBlock(nn.Module):
         return self.conv(x)
 
 
-class VisualCortexDecoder(nn.Module):
+class VisualCortexSegmentationDecoder(nn.Module):
     def __init__(self, img_channels=80, latent_dim=1024):
         super().__init__()
 

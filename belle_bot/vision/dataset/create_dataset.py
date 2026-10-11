@@ -12,7 +12,7 @@ import webdataset as wds
 from tqdm import tqdm
 
 from belle_bot.utils.cli import clpy
-from belle_bot.vision.encoder.config.vision_encoder_dataset_creation_config import VisionEncoderDatasetCreationConfig
+from belle_bot.vision.config.vision_encoder_dataset_creation_config import VisionEncoderDatasetCreationConfig
 from houston.client.py import replays
 
 # todo upload the dataset to houston once done
@@ -142,7 +142,7 @@ def create_dataset(shuffle=True):
                 },
             }
 
-            if masks is not None:
+            if masks is not None and masks > 0:
                 mask_idx = random.randint(0, len(masks) - 1)
                 mask = masks[mask_idx]
                 

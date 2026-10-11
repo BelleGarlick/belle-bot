@@ -1,10 +1,11 @@
 import torch
 from . import model
 from belle_bot.vision.config.vision_encoder_training_config import VisionEncoderTrainingConfig
-from ..utils.models import TaskDefinition
 
 
 def get_task_definition(config: VisionEncoderTrainingConfig, device: torch.device):
+    from belle_bot.vision.tasks.utils.models import TaskDefinition
+
     mdl = model.VisualCortexEncoder().to(device)
 
     # Load checkpoint and freeze model

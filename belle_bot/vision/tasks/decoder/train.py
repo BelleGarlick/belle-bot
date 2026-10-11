@@ -1,7 +1,7 @@
 import torch
 
-from tasks.decoder.loss import OptimizedVaeLoss
-from tasks.utils.models import VisualCortexStepArgs
+from belle_bot.vision.tasks.decoder.loss import OptimizedVaeLoss
+from belle_bot.vision.tasks.utils.models import VisualCortexStepArgs
 
 loss_fn = OptimizedVaeLoss()
 

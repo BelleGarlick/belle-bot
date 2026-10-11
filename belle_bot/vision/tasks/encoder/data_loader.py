@@ -80,7 +80,7 @@ def merge(data):
 
     # Convert to float32 and scale to [0, 1]
     rgb = rgb.astype(np.float32) / 255.0
-    depth = depth.astype(np.float32) / 65535.0  # Assuming 16-bit depth # TODO this is wrong!!
+    depth = depth.astype(np.float32) / 65535.0  # Assuming 16-bit depth
     depth = np.expand_dims(depth, axis=2)
 
     return np.concatenate((rgb, depth), axis=-1)

@@ -1,7 +1,7 @@
 import argparse
 import torch
 import torch.onnx
-from belle_bot.vision.encoder.training.ml_model import VAE2_448
+from belle_bot.vision.training.ml_model import VAE2_448
 import os
 
         
@@ -93,3 +93,12 @@ def export_onnx(model: VAE2_448, output_path):
 
     except Exception as e:
         print(f"ONNX verification/consolidation failed: {e}")
+
+
+
+if __name__ == "__main__":
+    model = VAE2_448(latent_dim=1024).to("cpu")
+    model.load_state_dict(
+        torch.load("/Users/belle/Developer/belle-bot/belle_bot/vision/encoder/tasks/bounding_boxes/vision_encoder.pt",
+                   map_location="cpu"))
+    export_onnx(model, "model.onnx")
