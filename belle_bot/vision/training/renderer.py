@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
+import torch.nn.functional as F
 
 from belle_bot.vision.tasks.bounding_boxes.utils import perform_nms, render_boxes
 from belle_bot.vision.tasks.utils.models import TaskDefinition
@@ -18,8 +19,8 @@ def render_training_progress(
 
     `train_samples` and `test_samples` are lists/deques of batch tensors.
     """
-    for model in all_models:
-        model.eval()
+    for task in tasks:
+        tasks[task].model.eval()
 
     cm = plt.get_cmap('rainbow')
     def render_depth(d):
