@@ -23,7 +23,7 @@ class VisionEncoderTrainingConfig(BaseModel):
     max_steps: int = Field(1_000_000, description="max number of training steps")
 
     # Max number of validation steps to perform while accumulating a validation average
-    max_val_steps: int = Field(500, description="max number of validation steps")
+    max_val_steps: int = Field(1000, description="max number of validation steps")
 
     # The number of samplers per update
     mini_batch_size: int = Field(4, description="The number of samplers per update")
@@ -34,6 +34,6 @@ class VisionEncoderTrainingConfig(BaseModel):
     # The rate to which the learning rate decays. lr = lr * (1- (step/max_steps)^gamma)
     learning_rate_gamma: float = Field(0.4, description="The rate to which the learning rate decays. lr = lr * (1- (step/max_steps)^gamma)")
 
-    kl_annealing: float = 0.0005
+    kl_annealing: float = 0.00001
 
     checkpoint_name: str = Field("vision_encoder", description="Checkpoint name")

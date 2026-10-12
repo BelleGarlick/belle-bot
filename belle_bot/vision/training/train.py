@@ -15,13 +15,6 @@ from belle_bot.vision.training.renderer import render_training_progress
 DEVICE = torch.device('mps' if torch.backends.mps.is_available() else ('cuda' if torch.cuda.is_available() else 'cpu'))
 
 config = clpy.parse_cli_args(VisionEncoderTrainingConfig())
-config.eval_every_n_steps = 10_000
-config.max_steps = 50_000
-config.render_image_every_n_steps = 100000
-config.max_val_steps = 1000
-config.mini_batch_size = 4
-config.mlflow.enabled = False
-# config.mlflow.endpoint = "sqlite:////mlflow.db"
 
 
 tasks = {
@@ -177,6 +170,13 @@ if __name__ == "__main__":
                     for task in tasks:
                         torch.save(tasks[task].model.state_dict(), f"visual_cortex_v2b1_{task}.pt")
 
+                # Log the metrics if enabled
+                if config.mlflow.enabled:
+                    mlflow.log_metrics({
+                        **mean_loss(epoch_loss_train),
+                        **{f"val_{key}": value for key, value in mean_loss(epoch_loss_val).items()}
+                    }, step=step + 1)
+
             # Render images if the step % is reached
             if (step + 1) % config.render_image_every_n_steps == 0:
                 render_training_progress(
@@ -185,10 +185,3 @@ if __name__ == "__main__":
                     test_dl=tasks["detection"].test_set,
                     device=DEVICE,
                 )
-
-            # # Log the metrics if enabled
-            # if config.mlflow.enabled:
-            #     mlflow.log_metrics({
-            #         **mean_loss(epoch_loss_train),
-            #         **{f"val_{key}": value for key, value in mean_loss(epoch_loss_val).items()}
-            #     }, step=step + 1)
