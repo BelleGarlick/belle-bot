@@ -10,6 +10,7 @@ from transformers import AutoTokenizer
 from belle_bot.vision.tasks.encoder.data_loader import merge
 from belle_bot.vision.tasks.language.loss import VisionLossModule
 from belle_bot.vision.tasks.utils.models import VisualCortexStepArgs
+from belle_bot.vision.utils.image import load_image
 
 BATCH_SIZE = 1
 MAX_TEXT_LEN = 512
@@ -19,19 +20,6 @@ IMAGE_PLACEHOLDER_TOKEN = 151643
 
 
 MODEL_LOCAL_DIR = os.environ.get("MODEL_LOCAL_DIR", os.path.expanduser("~/models/Qwen3.5-0.8B"))
-
-
-def load_image(image_id):
-    for split in ["train2017", "val2017"]:
-        img_path = f"/Users/belle/Downloads/{split}/{image_id}"
-        if os.path.exists(img_path):
-            try:
-                with Image.open(img_path) as img:
-                    return img.convert("RGB")
-            except Exception:
-                pass
-
-    return None
 
 
 def preprocess_image(image):

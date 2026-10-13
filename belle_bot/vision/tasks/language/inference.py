@@ -13,6 +13,7 @@ from belle_bot.vision.training.ml_model import VAE2_448
 from belle_bot.vision.tasks.encoder.data_loader import merge
 from tasks.language.loss import VisionLossModule
 from tasks.language.model import VisualCortexLanguageProjection
+from belle_bot.vision.utils.image import load_image
 
 DEVICE = "mps"
 BATCH_SIZE = 1
@@ -42,19 +43,6 @@ vision_encoder.load_state_dict(
 vision_encoder.to(DEVICE).to(torch.bfloat16)
 for param in vision_encoder.parameters():
     param.requires_grad = False
-
-
-def load_image(image_id):
-    for split in ["train2017", "val2017"]:
-        img_path = f"/Users/belle/Downloads/{split}/{image_id}"
-        if os.path.exists(img_path):
-            try:
-                with Image.open(img_path) as img:
-                    return img.convert("RGB")
-            except Exception:
-                pass
-
-    return None
 
 
 def preprocess_image(image):

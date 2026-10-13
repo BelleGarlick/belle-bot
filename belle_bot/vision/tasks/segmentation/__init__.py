@@ -3,6 +3,7 @@ from torch.utils.data import DataLoader
 
 from belle_bot.vision.config.vision_encoder_training_config import VisionEncoderTrainingConfig
 from belle_bot.vision.tasks.segmentation.data_loader import load_dataset as segmentation_dataset
+from belle_bot.vision.tasks.utils.data import get_infinite_dataloader
 from . import model, loss, train
 from ..utils.models import TaskDefinition
 
@@ -25,8 +26,8 @@ def get_task_definition(config: VisionEncoderTrainingConfig, device: torch.devic
     # Prepare the train/test datasets
     pin_memory = device.type != 'mps'
     segmentation_train_dataset, segmentation_test_dataset = segmentation_dataset(config)
-    segmentation_train_loader = iter(DataLoader(segmentation_train_dataset, batch_size=None, pin_memory=pin_memory))
-    segmentation_test_loader = iter(DataLoader(segmentation_test_dataset, batch_size=None, pin_memory=pin_memory))
+    segmentation_train_loader = get_infinite_dataloader(DataLoader(segmentation_train_dataset, batch_size=None, pin_memory=pin_memory))
+    segmentation_test_loader = get_infinite_dataloader(DataLoader(segmentation_test_dataset, batch_size=None, pin_memory=pin_memory))
 
     return TaskDefinition(
         model=mdl,
