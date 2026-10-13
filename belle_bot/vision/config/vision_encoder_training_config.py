@@ -29,7 +29,7 @@ class VisionEncoderTrainingConfig(BaseModel):
     mini_batch_size: int = Field(4, description="The number of samplers per update")
 
     # The optimizer learning rate
-    learning_rate: float = Field(1e-3, description="The optimiser learning rate")
+    learning_rate: float = Field(1e-4, description="The optimiser learning rate")
 
     # The rate to which the learning rate decays. lr = lr * (1- (step/max_steps)^gamma)
     learning_rate_gamma: float = Field(0.4, description="The rate to which the learning rate decays. lr = lr * (1- (step/max_steps)^gamma)")

@@ -13,18 +13,17 @@ YOLO_FAMILY = "yolo26l"
 DETECTION_YOLO = YOLO(f"{YOLO_FAMILY}.pt")
 SEGMENTATION_YOLO = YOLO(f"{YOLO_FAMILY}-sem.pt")
 
+input_path = "/run/media/belle/Houston/datasets/vision-encoder/v1/test-{000000..000001}.tar"
+output_path = "/run/media/belle/Houston/datasets/vision-encoder/v1i/test-%06d.tar"
 
-def impute_dataset(dataset_path, max_items=10_000):
-    dataset = wds.WebDataset(dataset_path)
+def impute_dataset(config):
+    dataset = wds.WebDataset(input_path)
 
-    print(f"Generating embeddings for {dataset_path}...")
     with (
-        wds.ShardWriter(str("distillation-test-%06d.tar"), maxcount=config.max_partition_size) as writer
+        wds.ShardWriter(output_path, maxcount=config.max_partition_size) as writer
     ):
         for i, item in enumerate(dataset):
-            print(f"\r{i}/{max_items}", end="")
-            if i > max_items:
-                break
+            print(f"\r{i}", end="")
 
             main_image_bytes = io.BytesIO(item['rgb'])
             raw_main_image = np.array(Image.open(main_image_bytes))
@@ -48,7 +47,7 @@ def detect_objects(raw_rgb_image):
         max_det=300,
         verbose=False
     )[0]
-    boxes = response.boxes.data.numpy()
+    boxes = response.boxes.data.cpu().numpy()
 
     # rescale the boxes so it's relative to the input image size
     return np.hstack((
@@ -62,7 +61,7 @@ def detect_objects(raw_rgb_image):
 
 def compute_seg_mask(raw_rgb_image):
     response = SEGMENTATION_YOLO(raw_rgb_image, verbose=False)[0]
-    return response.semantic_mask.data.numpy()
+    return response.semantic_mask.data.cpu().numpy()
 
 
 if __name__ == "__main__":
@@ -70,10 +69,6 @@ if __name__ == "__main__":
     config = clpy.parse_cli_args(VisionEncoderDatasetCreationConfig())
     clpy.print_values(config)
 
-    # dataset_pattern = str(output_dir / "train-{000000..000001}.tar")
-
-    file_path = "/Users/belle/Developer/belle-bot/belle_bot/vision/encoder/dataset/test-000000.tar"
-
-    impute_dataset(file_path)
+    impute_dataset(config)
     print("Done!")
-999999
+

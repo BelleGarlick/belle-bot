@@ -6,8 +6,8 @@ import webdataset as wds
 from belle_bot.vision.tasks.encoder.data_loader import extract_encoder_input, merge
 
 # Dataset setup
-train_path = str("/Users/belle/Developer/belle-bot/belle_bot/vision/encoder/dataset/distillation-test-000000.tar")
-test_path = str("/Users/belle/Developer/belle-bot/belle_bot/vision/encoder/dataset/distillation-test-000000.tar")
+train_path = str("/run/media/belle/Houston/datasets/vision-encoder/v1/train-{000000..000036}.tar")
+test_path = str("/run/media/belle/Houston/datasets/vision-encoder/v1/test-{000000..000007}.tar")
 
 
 def extract_segmentation_data(data, apply_depth_mask=True):
@@ -16,6 +16,7 @@ def extract_segmentation_data(data, apply_depth_mask=True):
     segmask = np.frombuffer(data['segmentation_mask'], dtype=np.uint8)
     segmask = segmask.reshape((480, 640))
     segmask = cv2.resize(segmask, (448, 448))
+    segmask = np.array(segmask, dtype=np.long)
 
     return merge(input), segmask
 

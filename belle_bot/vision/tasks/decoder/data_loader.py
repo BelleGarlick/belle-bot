@@ -8,11 +8,8 @@ import webdataset as wds
 from belle_bot.vision.tasks.encoder.data_loader import colour_jitter, extract_encoder_input, position_jitter, merge
 
 # Dataset setup
-base_path = Path("/run/media/belle/Houston/datasets/vision-encoder/v1/")
-train_path = str("/Users/belle/Developer/belle-bot/train-{000000..000000}.tar")
-# train_path = str(base_path / "train-{000000..000004}.tar")
-test_path = str(base_path / "/Users/belle/Developer/belle-bot/train-{000000..000000}.tar")
-# test_path = str(base_path / "test-{000000..000001}.tar")
+train_path = str("/run/media/belle/Houston/datasets/vision-encoder/v1/train-{000000..000036}.tar")
+test_path = str("/run/media/belle/Houston/datasets/vision-encoder/v1/test-{000000..000007}.tar")
 
 
 def extract_decoder_ouput(data, apply_depth_mask=True):

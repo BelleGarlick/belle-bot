@@ -25,9 +25,6 @@ def get_task_definition(config: VisionEncoderTrainingConfig, device: torch.devic
     # Load checkpoint and freeze model
     if config.model.detection.file_path:
         mdl.load_state_dict(torch.load(config.model.detection.file_path, map_location=device))
-    if config.model.detection.frozen:
-        for param in mdl.parameters():
-            param.requires_grad = False
 
     # Prepare the train/test datasets
     pin_memory = device.type != 'mps'

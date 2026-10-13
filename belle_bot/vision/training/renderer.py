@@ -59,8 +59,8 @@ def render_training_progress(
                 output_depth = (render_depth(batch_decoder_y[i, 3, :, :]) * 255).astype(np.uint8)
                 output_segmentation = (render_depth(batch_segmentation_y[i] / 80) * 255).astype(np.uint8)
 
-                boxes = perform_nms(batch_detection_y[i:i+1])[0]
-                input_rgb = render_boxes(input_rgb, boxes)
+                boxes = perform_nms(torch.tensor(batch_detection_y[i:i+1]))[0]
+                input_rgb = render_boxes(input_rgb, boxes.detach().cpu().numpy())
 
                 # Create the image grid for a single item (Top: Input RGB+Depth, Bottom: Output RGB+Depth)
                 pair = np.vstack((
@@ -85,7 +85,7 @@ def render_training_progress(
         plt.figure(figsize=(32, 8 * len(rows)))
         plt.title(f"Reconstructions - Left: RGB, Right: Depth | Top: Input, Bottom: Output")
         plt.imshow(np.clip(grid, 0, 255))
-        # plt.savefig(f"{name}_{step}.png")
-        plt.show()
+        plt.savefig(f"visualisation_{step}.png")
+        #plt.show()
         plt.close()
 

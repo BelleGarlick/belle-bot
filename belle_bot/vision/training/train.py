@@ -104,7 +104,7 @@ if __name__ == "__main__":
 
             # Train the model
             loss['loss'].backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            torch.nn.utils.clip_grad_norm_(model_params, max_norm=0.5)
             optimizer.step()
 
             epoch_loss_train[active_task].append({k: v.item() if isinstance(v, torch.Tensor) else v for k, v in loss.items()})
@@ -173,8 +173,16 @@ if __name__ == "__main__":
                 # Log the metrics if enabled
                 if config.mlflow.enabled:
                     mlflow.log_metrics({
-                        **mean_loss(epoch_loss_train),
-                        **{f"val_{key}": value for key, value in mean_loss(epoch_loss_val).items()}
+                          "decoder": mean_loss(epoch_loss_train["decoder"])['loss'],
+                          "segmentation": mean_loss(epoch_loss_train["segmentation"])['loss'],
+                          "detection": mean_loss(epoch_loss_train["detection"])['loss'],
+                          "language": mean_loss(epoch_loss_train["language"])['loss'],
+                          "val_decoder": mean_loss(epoch_loss_val["decoder"])['loss'],
+                          "val_segmentation": mean_loss(epoch_loss_val["segmentation"])['loss'],
+                          "val_detection": mean_loss(epoch_loss_val["detection"])['loss'],
+                          "val_language": mean_loss(epoch_loss_val["language"])['loss']
+                        #**ean_loss(epoch_loss_train),
+                        #**{f"val_{key}": value for key, value in mean_loss(epoch_loss_val).items()}
                     }, step=step + 1)
 
             # Render images if the step % is reached
