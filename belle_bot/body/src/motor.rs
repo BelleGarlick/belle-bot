@@ -32,6 +32,7 @@ impl <'a, S> Motor<S>
     where 
         S: pwm::SliceId  
     {
+        self.pwm_slice.channel_a.set_duty_cycle(0);
         let channel: &mut pwm::Channel<Slice<S, pwm::FreeRunning>, pwm::B> = &mut self.pwm_slice.channel_b;
         for i in 1..25000 {
             channel.set_duty_cycle(i);
@@ -42,7 +43,8 @@ impl <'a, S> Motor<S>
     where 
         S: pwm::SliceId 
     {
-        let channel: &mut pwm::Channel<Slice<S, pwm::FreeRunning>, pwm::B> = &mut self.pwm_slice.channel_b;
+        self.pwm_slice.channel_b.set_duty_cycle(0);
+        let channel: &mut pwm::Channel<Slice<S, pwm::FreeRunning>, pwm::A> = &mut self.pwm_slice.channel_a;
         for i in (1..25000).rev() {
             channel.set_duty_cycle(i);
         }
@@ -52,8 +54,8 @@ impl <'a, S> Motor<S>
     where 
         S: pwm::SliceId 
     {
-        let channel: &mut pwm::Channel<Slice<S, pwm::FreeRunning>, pwm::B> = &mut self.pwm_slice.channel_b;
-        channel.set_duty_cycle(0);
+        self.pwm_slice.channel_a.set_duty_cycle(0);
+        self.pwm_slice.channel_b.set_duty_cycle(0);
         self.state = Direction::STOPPED;
     }
     pub fn from<P>(pin: P, pin_num: u8, mut pwm_slice: Slice<S, pwm::FreeRunning>) -> Motor<S>
