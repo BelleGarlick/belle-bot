@@ -23,38 +23,38 @@ pub enum Direction {
 pub struct Motor<S: pwm::SliceId> {
     state: Direction,
     pin: u8,
-    pwm_slice: Option<Slice<S, pwm::FreeRunning>>
+    pwm_slice: Slice<S, pwm::FreeRunning>
 }
 impl <'a, S> Motor<S>
     where 
         S: pwm::SliceId  {
-    pub fn forward(&mut self) -> Motor<S>
+    pub fn forward(&mut self)
     where 
         S: pwm::SliceId  
     {
-        let channel: &mut pwm::Channel<Slice<S, pwm::FreeRunning>, pwm::B> = &mut self.pwm_slice.take().unwrap().channel_b;
+        let channel: &mut pwm::Channel<Slice<S, pwm::FreeRunning>, pwm::B> = &mut self.pwm_slice.channel_b;
         for i in 1..25000 {
             channel.set_duty_cycle(i);
         }
-        Motor { state: Direction::FORWARD, pin: self.pin, pwm_slice: Some(self.pwm_slice.take().unwrap()) }
+        self.state = Direction::FORWARD;
     }
-    pub fn backwards(&mut self) -> Motor<S>
+    pub fn backwards(&mut self)
     where 
         S: pwm::SliceId 
     {
-        let channel: &mut pwm::Channel<Slice<S, pwm::FreeRunning>, pwm::B> = &mut self.pwm_slice.take().unwrap().channel_b;
+        let channel: &mut pwm::Channel<Slice<S, pwm::FreeRunning>, pwm::B> = &mut self.pwm_slice.channel_b;
         for i in (1..25000).rev() {
             channel.set_duty_cycle(i);
         }
-        Motor { state: Direction::BACKWARD, pin: self.pin, pwm_slice: Some(self.pwm_slice.take().unwrap()) }
+        self.state = Direction::BACKWARD;
     }
-    pub fn stop(&mut self) -> Motor<S>
+    pub fn stop(&mut self)
     where 
         S: pwm::SliceId 
     {
-        let channel: &mut pwm::Channel<Slice<S, pwm::FreeRunning>, pwm::B> = &mut self.pwm_slice.take().unwrap().channel_b;
+        let channel: &mut pwm::Channel<Slice<S, pwm::FreeRunning>, pwm::B> = &mut self.pwm_slice.channel_b;
         channel.set_duty_cycle(0);
-        Motor { state: Direction::STOPPED, pin: self.pin, pwm_slice: Some(self.pwm_slice.take().unwrap()) }
+        self.state = Direction::STOPPED;
     }
     pub fn from<P>(pin: P, pin_num: u8, mut pwm_slice: Slice<S, pwm::FreeRunning>) -> Motor<S>
     where 
@@ -79,7 +79,7 @@ impl <'a, S> Motor<S>
         Motor {
             state: Direction::STOPPED,
             pin: pin_num,
-            pwm_slice: Some(pwm_slice)
+            pwm_slice: pwm_slice
         }
     }
 }
