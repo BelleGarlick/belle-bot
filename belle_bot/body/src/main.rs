@@ -48,7 +48,10 @@ use embedded_hal::digital::OutputPin;
 use rp2040_hal::pac;
 use rp2040_hal::pwm;
 use rp2040_hal::usb;
-use rp2040_hal::{gpio::Pins, pwm::Slices, Sio, Watchdog};
+use rp2040_hal::uart;
+use rp2040_hal::{gpio::{Pins, FunctionUart}, pwm::Slices, Sio, Watchdog};
+use rp2040_hal::fugit::RateExtU32;
+use rp2040_hal::Clock;
 
 use usb_device::bus::UsbBusAllocator;
 use usb_device::prelude::*;
@@ -87,7 +90,7 @@ fn main() -> ! {
 
     let pwm_slices: Slices = Slices::new(pac.PWM, &mut pac.RESETS);
 
-    // sets up 
+    // sets up two
     let mut motor_one: motor::Motor<pwm::Pwm1> = motor::Motor::from(pins.gpio19, 19, pwm_slices.pwm1);
     let mut motor_two: motor::Motor<pwm::Pwm2> = motor::Motor::from(pins.gpio21, 21, pwm_slices.pwm2);
 
@@ -115,49 +118,85 @@ fn main() -> ! {
         .strings(&[StringDescriptors::default()
             .manufacturer("Raspberry Pi")
             .product("Pico Motor Controller")
-            .serial_number("12345678")])
+            .serial_number("belle-ctr")])
         .unwrap()
         .device_class(usbd_serial::USB_CLASS_CDC)
         .build();
 
-    loop {
-        if usb_dev.poll(&mut [&mut serial]) {
-            let mut buf = [0u8; 64];
+    let uart_pins = (
+        pins.gpio0.into_function(),
+        pins.gpio1.into_function(),
+    );
 
-            match serial.read(&mut buf) {
-                Ok(count) if count > 0 => {
-                    // Look at the incoming character sent from your laptop script/terminal
-                    match buf[0] {
-                        b'w' => {
-                            motor_one.forward();
-                            motor_two.forward();
-                            let _ = serial.write(b"Motor moving STARTED\r\n");
-                        }
-                        b's' => {
-                            motor_one.stop();
-                            motor_two.stop();
-                            let _ = serial.write(b"Motor STOPPED\r\n");
-                        }
-                        b'a' => {
-                            motor_one.backwards();
-                            motor_two.forward();
-                            let _ = serial.write(b"Motor turning LEFT\r\n");
-                        }
-                        b'd' => {
-                            motor_one.forward();
-                            motor_two.backwards();
-                            let _ = serial.write(b"Motor turning RIGHT\r\n");
-                        }
-                        b'x' => {
-                            motor_one.backwards();
-                            motor_two.backwards();
-                            let _ = serial.write(b"Motor moving BACKWARD\r\n");
-                        }
-                        _ => {}
+    // setting up uart connections
+    // we connect the output
+    let uart: uart::UartPeripheral<uart::Enabled, pac::UART0,
+        (
+            rp2040_hal::gpio::Pin<rp2040_hal::gpio::bank0::Gpio0, FunctionUart, rp2040_hal::gpio::PullDown>,
+            rp2040_hal::gpio::Pin<rp2040_hal::gpio::bank0::Gpio1, FunctionUart, rp2040_hal::gpio::PullDown>
+        )
+    > = uart::UartPeripheral::new(pac.UART0, uart_pins, &mut pac.RESETS)
+        .enable(
+            uart::UartConfig::new(
+                115200.Hz(),
+                uart::DataBits::Eight,
+                None,
+                uart::StopBits::One
+            ),
+            clocks.peripheral_clock.freq(),
+        ).unwrap();
+
+    let (rx, tx) = uart.split();
+    let _ = tx.write_full_blocking(b"s");
+    let mut counter: u32 = 0;
+    loop {
+        let _ = usb_dev.poll(&mut [&mut serial]);
+        let mut buf = [0u8; 64];
+        let buffer: &mut [u8] = &mut [0x78];
+        counter = counter.wrapping_add(1);
+        if counter == 100_000 {
+            // let _ = rx.read_full_blocking(buffer);
+            let _ = tx.write_full_blocking(buffer);
+            counter = 0;
+        }
+        match serial.read(&mut buf) {
+            Ok(count) if count > 0 => {
+                // Look at the incoming character sent from your laptop script/terminal
+                match buf[0] {
+                    b'w' => {
+                        motor_one.forward();
+                        motor_two.forward();
+                        let _ = tx.write_full_blocking(b"w");
+                        let _ = serial.write(b"Motor moving STARTED\r\n");
                     }
+                    b's' => {
+                        motor_one.stop();
+                        motor_two.stop();
+                        let _ = tx.write_full_blocking(b"s");
+                        let _ = serial.write(b"Motor STOPPED\r\n");
+                    }
+                    b'a' => {
+                        motor_one.backwards();
+                        motor_two.forward();
+                        let _ = tx.write_full_blocking(b"a");
+                        let _ = serial.write(b"Motor turning LEFT\r\n");
+                    }
+                    b'd' => {
+                        motor_one.forward();
+                        motor_two.backwards();
+                        let _ = tx.write_full_blocking(b"d");
+                        let _ = serial.write(b"Motor turning RIGHT\r\n");
+                    }
+                    b'x' => {
+                        motor_one.backwards();
+                        motor_two.backwards();
+                        let _ = tx.write_full_blocking(b"x");
+                        let _ = serial.write(b"Motor moving BACKWARD\r\n");
+                    }
+                    _ => {}
                 }
-                _ => {}
             }
+            _ => {}
         }
         led_pin.set_high().unwrap();
     }
