@@ -1,5 +1,6 @@
 #![no_std]
 #![no_main]
+
 /// https://github.com/khoih-prog/RP2040_PWM/blob/main/README.md <- PWM output
 /// CONNECTIONS:
 ///     Battery:
@@ -147,22 +148,17 @@ fn main() -> ! {
         ).unwrap();
 
     let (rx, tx) = uart.split();
+
     let _ = tx.write_full_blocking(b"s");
-    let mut counter: u32 = 0;
+    // we write s to start with so that the computer knows the pico is connect
+    // and also so that we know that both motors are stationary.
+    let mut rx_buf = [0u8; 1];
     loop {
-        let _ = usb_dev.poll(&mut [&mut serial]);
-        let mut buf = [0u8; 64];
-        let buffer: &mut [u8] = &mut [0x78];
-        counter = counter.wrapping_add(1);
-        if counter == 100_000 {
-            // let _ = rx.read_full_blocking(buffer);
-            let _ = tx.write_full_blocking(buffer);
-            counter = 0;
-        }
-        match serial.read(&mut buf) {
+        match rx.read_raw(&mut rx_buf) {
             Ok(count) if count > 0 => {
+                let cmd = rx_buf[0];
                 // Look at the incoming character sent from your laptop script/terminal
-                match buf[0] {
+                match cmd {
                     b'w' => {
                         motor_one.forward();
                         motor_two.forward();
@@ -197,7 +193,7 @@ fn main() -> ! {
                 }
             }
             _ => {}
-        }
+        };
         led_pin.set_high().unwrap();
     }
 }
