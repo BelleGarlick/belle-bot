@@ -62,6 +62,7 @@ pub static BOOT2: [u8; 256] = rp2040_boot2::BOOT_LOADER_W25Q080;
 fn main() -> ! {
     // take the peripherals for the device
     let mut pac: pac::Peripherals = pac::Peripherals::take().unwrap();
+    let core: pac::CorePeripherals = pac::CorePeripherals::take().unwrap();
     // prevents time out
     let mut watchdog: Watchdog = Watchdog::new(pac.WATCHDOG);
     // inialise a clock to keep track of timings
@@ -75,6 +76,8 @@ fn main() -> ! {
         &mut watchdog,
     )
     .unwrap();
+
+    let mut delay = cortex_m::delay::Delay::new(core.SYST, clocks.system_clock.freq().to_Hz());
 
     let sio: Sio = Sio::new(pac.SIO);
     // initalise the pins
@@ -159,6 +162,7 @@ fn main() -> ! {
         };
     
     let _ = tx.write_raw(direction);
+    delay.delay_ms(1000);
     led_pin.set_high().unwrap();
     }
 }
