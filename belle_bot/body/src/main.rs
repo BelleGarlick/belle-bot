@@ -40,6 +40,12 @@
 ///                        ->[-]______/    |                  GND        ->  GND
 ///                                        ----------------   GND
 ///
+///
+/// some helpful screen commands:
+/// 1. screen -ls: lists all screens running
+/// 2. pkill screen: kills all sessions
+/// 3. echo -n "w" > /dev/<target-screen> sets the current active direction
+
 mod motor;
 
 use defmt_rtt as _;
