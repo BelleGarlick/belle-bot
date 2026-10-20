@@ -49,9 +49,9 @@
 mod motor;
 
 use defmt_rtt as _;
+use embedded_hal::digital::StatefulOutputPin;
 use panic_probe as _;
 
-use embedded_hal::digital::OutputPin;
 use rp2040_hal::pac;
 use rp2040_hal::pwm;
 use rp2040_hal::uart;
@@ -68,7 +68,6 @@ pub static BOOT2: [u8; 256] = rp2040_boot2::BOOT_LOADER_W25Q080;
 fn main() -> ! {
     // take the peripherals for the device
     let mut pac: pac::Peripherals = pac::Peripherals::take().unwrap();
-    let core: pac::CorePeripherals = pac::CorePeripherals::take().unwrap();
     // prevents time out
     let mut watchdog: Watchdog = Watchdog::new(pac.WATCHDOG);
     // inialise a clock to keep track of timings
@@ -82,8 +81,6 @@ fn main() -> ! {
         &mut watchdog,
     )
     .unwrap();
-
-    let mut delay = cortex_m::delay::Delay::new(core.SYST, clocks.system_clock.freq().to_Hz());
 
     let sio: Sio = Sio::new(pac.SIO);
     // initalise the pins
@@ -132,43 +129,53 @@ fn main() -> ! {
 
     let (rx, tx) = uart.split();
 
-    let _ = tx.write_full_blocking(b"s");
-    // we write s to start with so that the computer knows the pico is connect
-    // and also so that we know that both motors are stationary.
-    let mut rx_buf = [0u8; 1];
+    let mut rx_buf: [u8; 1] = [0u8; 1];
+    let mut count: i32 = 0;
+    let mut active_state: &[u8; 1] = b"0";
+
     loop {
-        let _ = rx.read_raw(&mut rx_buf).expect("msg");
-        let direction: &[u8; 1] = match rx_buf[0] {
-            b'w' => {
-                motor_one.forward();
-                motor_two.forward();
-                b"w"
+        // 1. We read the rx channel into the rx_buf. This will give us a single byte which will define our status
+        // 2. Provided the read is performed correctly and there is data coming from the channel,
+        //      we either trigger the motor direction based on the state, OR we continue as normal.
+        //      Once we do this we update the active_state to be the direction we are moving, so that on the next
+        //      loop iteration we trigger the same direction again.
+        match rx.read_raw(&mut rx_buf) {
+            Ok(count) if count > 0 => {
+                match rx_buf[0] {
+                    b'w' if motor_one.state != motor::Direction::FORWARD => {
+                        motor_one.forward();
+                        motor_two.forward();
+                        active_state = b"w";
+                    }
+                    b's' if motor_one.state != motor::Direction::STOPPED => {
+                        motor_one.stop();
+                        motor_two.stop();
+                        active_state = b"s";
+                    }
+                    b'x' if motor_one.state != motor::Direction::BACKWARD => {
+                        motor_one.backwards();
+                        motor_two.backwards();
+                        active_state = b"x";
+                    }
+                    _ => {}
+                }
+            },
+            _ => {}
+        }
+        // 3. We throttle the uart connection in kinda a cool way by counting up to 5 million
+        //      and once we hit the five million we check if the active state is running (not a 0)
+        //      and if it isnt then we write what ever value it is.
+        //      We do this because rust is so fast it kinda overwhelms the uart connection and
+        //      the bytes get written over faster then the pico and pi can keep up. Therefore, triggering
+        //      the write command to the pico only activates every 0.5 seconds or so.
+        // 4. We flash a led pin to ensure this if block is being triggered.
+        count = count.wrapping_add(1);
+        if count >= 5_000_000 {
+            if active_state != b"0" {
+                let _ = tx.write_raw(active_state);
             }
-            b's' => {
-                motor_one.stop();
-                motor_two.stop();
-                b"s"
-            }
-            b'a' => {
-                motor_one.backwards();
-                motor_two.forward();
-                b"a"
-            }
-            b'd' => {
-                motor_one.forward();
-                motor_two.backwards();
-                b"d"
-            }
-            b'x' => {
-                motor_one.backwards();
-                motor_two.backwards();
-                b"x"
-            }
-            _ => {b"s"}
-        };
-    
-    let _ = tx.write_raw(direction);
-    delay.delay_ms(1000);
-    led_pin.set_high().unwrap();
+            let _ = led_pin.toggle();
+            count = 0;
+        }
     }
 }
