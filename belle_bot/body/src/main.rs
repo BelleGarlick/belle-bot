@@ -48,15 +48,11 @@ use panic_probe as _;
 use embedded_hal::digital::OutputPin;
 use rp2040_hal::pac;
 use rp2040_hal::pwm;
-use rp2040_hal::usb;
 use rp2040_hal::uart;
 use rp2040_hal::{gpio::{Pins, FunctionUart}, pwm::Slices, Sio, Watchdog};
 use rp2040_hal::fugit::RateExtU32;
 use rp2040_hal::Clock;
 
-use usb_device::bus::UsbBusAllocator;
-use usb_device::prelude::*;
-use usbd_serial::SerialPort;
 
 #[link_section = ".boot2"]
 #[used]
@@ -102,28 +98,6 @@ fn main() -> ! {
         rp2040_hal::gpio::PullDown,
     > = pins.gpio25.into_push_pull_output();
 
-    // usb serial connection
-    let usb_bus: UsbBusAllocator<usb::UsbBus> = UsbBusAllocator::new(usb::UsbBus::new(
-        pac.USBCTRL_REGS,
-        pac.USBCTRL_DPRAM,
-        clocks.usb_clock,
-        true,
-        &mut pac.RESETS,
-    ));
-
-    // 3. Create the USB Serial (CDC-ACM) Port
-    let mut serial = SerialPort::new(&usb_bus);
-
-    // 4. Build the USB Device descriptor (Vendor ID & Product ID)
-    let mut usb_dev = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x2e8a, 0x000a))
-        .strings(&[StringDescriptors::default()
-            .manufacturer("Raspberry Pi")
-            .product("Pico Motor Controller")
-            .serial_number("belle-ctr")])
-        .unwrap()
-        .device_class(usbd_serial::USB_CLASS_CDC)
-        .build();
-
     let uart_pins = (
         pins.gpio0.into_function(),
         pins.gpio1.into_function(),
@@ -154,46 +128,37 @@ fn main() -> ! {
     // and also so that we know that both motors are stationary.
     let mut rx_buf = [0u8; 1];
     loop {
-        match rx.read_raw(&mut rx_buf) {
-            Ok(count) if count > 0 => {
-                let cmd = rx_buf[0];
-                // Look at the incoming character sent from your laptop script/terminal
-                match cmd {
-                    b'w' => {
-                        motor_one.forward();
-                        motor_two.forward();
-                        let _ = tx.write_full_blocking(b"w");
-                        let _ = serial.write(b"Motor moving STARTED\r\n");
-                    }
-                    b's' => {
-                        motor_one.stop();
-                        motor_two.stop();
-                        let _ = tx.write_full_blocking(b"s");
-                        let _ = serial.write(b"Motor STOPPED\r\n");
-                    }
-                    b'a' => {
-                        motor_one.backwards();
-                        motor_two.forward();
-                        let _ = tx.write_full_blocking(b"a");
-                        let _ = serial.write(b"Motor turning LEFT\r\n");
-                    }
-                    b'd' => {
-                        motor_one.forward();
-                        motor_two.backwards();
-                        let _ = tx.write_full_blocking(b"d");
-                        let _ = serial.write(b"Motor turning RIGHT\r\n");
-                    }
-                    b'x' => {
-                        motor_one.backwards();
-                        motor_two.backwards();
-                        let _ = tx.write_full_blocking(b"x");
-                        let _ = serial.write(b"Motor moving BACKWARD\r\n");
-                    }
-                    _ => {}
-                }
+        let _ = rx.read_raw(&mut rx_buf).expect("msg");
+        let direction: &[u8; 1] = match rx_buf[0] {
+            b'w' => {
+                motor_one.forward();
+                motor_two.forward();
+                b"w"
             }
-            _ => {}
+            b's' => {
+                motor_one.stop();
+                motor_two.stop();
+                b"s"
+            }
+            b'a' => {
+                motor_one.backwards();
+                motor_two.forward();
+                b"a"
+            }
+            b'd' => {
+                motor_one.forward();
+                motor_two.backwards();
+                b"d"
+            }
+            b'x' => {
+                motor_one.backwards();
+                motor_two.backwards();
+                b"x"
+            }
+            _ => {b"s"}
         };
-        led_pin.set_high().unwrap();
+    
+    let _ = tx.write_raw(direction);
+    led_pin.set_high().unwrap();
     }
 }
