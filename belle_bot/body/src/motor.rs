@@ -5,6 +5,7 @@ use rp2040_hal::pwm;
 use rp2040_hal::gpio;
 use rp2040_hal::pwm::Slice;
 
+#[derive(PartialEq)]
 pub enum Direction {
     FORWARD,
     BACKWARD,
@@ -21,7 +22,7 @@ pub enum Direction {
 
 #[allow(dead_code)]
 pub struct Motor<S: pwm::SliceId> {
-    state: Direction,
+    pub state: Direction,
     pin: u8,
     pwm_slice: Slice<S, pwm::FreeRunning>
 }
