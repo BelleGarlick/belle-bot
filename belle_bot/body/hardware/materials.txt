@@ -1,0 +1,8 @@
+Battery - BlueTTI Elite 100 V2 
+Motors - 2x 12v DC Brush Motors
+Micro controller - Raspberry PI pico
+Basic switch - no brand
+Motor Driver - Cytron MDD10A 5-30V Dual Channel
+12v Ciggerette Lighter to pig tail connector
+
+
