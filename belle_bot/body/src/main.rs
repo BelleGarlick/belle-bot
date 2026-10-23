@@ -45,8 +45,12 @@
 /// 1. screen -ls: lists all screens running
 /// 2. pkill screen: kills all sessions
 /// 3. echo -n "w" > /dev/<target-screen> sets the current active direction
-
 mod motor;
+mod uart_connection;
+mod types;
+
+use embedded_hal::digital::OutputPin;
+use uart_connection::UARTConnection;
 
 use defmt_rtt as _;
 use embedded_hal::digital::StatefulOutputPin;
@@ -55,10 +59,11 @@ use panic_probe as _;
 use rp2040_hal::pac;
 use rp2040_hal::pwm;
 use rp2040_hal::uart;
-use rp2040_hal::{gpio::{Pins, FunctionUart}, pwm::Slices, Sio, Watchdog};
-use rp2040_hal::fugit::RateExtU32;
-use rp2040_hal::Clock;
-
+use rp2040_hal::{
+    gpio::{FunctionUart, Pins},
+    pwm::Slices,
+    Sio, Watchdog,
+};
 
 #[link_section = ".boot2"]
 #[used]
@@ -83,55 +88,37 @@ fn main() -> ! {
     .unwrap();
 
     let sio: Sio = Sio::new(pac.SIO);
-    // initalise the pins
+
+    // initalise the pins, slice and uart_peripherals
     let pins: Pins = Pins::new(
         pac.IO_BANK0,
         pac.PADS_BANK0,
         sio.gpio_bank0,
         &mut pac.RESETS,
     );
-
     let pwm_slices: Slices = Slices::new(pac.PWM, &mut pac.RESETS);
+    let uart_peripherals: (pac::UART0, pac::RESETS) = (pac.UART0, pac.RESETS);
 
-    // sets up two
-    let mut motor_one: motor::Motor<pwm::Pwm1> = motor::Motor::from(pins.gpio19, 19, pwm_slices.pwm1);
-    let mut motor_two: motor::Motor<pwm::Pwm2> = motor::Motor::from(pins.gpio21, 21, pwm_slices.pwm2);
+    let uart_pins: types::UartPins = uart::Pins::default()
+        .tx(pins.gpio0.into_function::<FunctionUart>())
+        .rx(pins.gpio1.into_function::<FunctionUart>());
 
-    // sets gpio25 onboard led to high so that we can see the pico has been flashed.
-    let mut led_pin: rp2040_hal::gpio::Pin<
-        rp2040_hal::gpio::bank0::Gpio25,
-        rp2040_hal::gpio::FunctionSio<rp2040_hal::gpio::SioOutput>,
-        rp2040_hal::gpio::PullDown,
-    > = pins.gpio25.into_push_pull_output();
+    // sets up two motors
+    let mut motor_one: motor::Motor<pwm::Pwm1> =
+        motor::Motor::from(pins.gpio19, 19, pwm_slices.pwm1);
+    let mut motor_two: motor::Motor<pwm::Pwm2> =
+        motor::Motor::from(pins.gpio21, 21, pwm_slices.pwm2);
 
-    let uart_pins = (
-        pins.gpio0.into_function(),
-        pins.gpio1.into_function(),
-    );
+    // we establish a uart connection between out chosen pins.
+    let uart_connection: UARTConnection<uart::Pins<_, _, _, _>> =
+        UARTConnection::from(uart_peripherals, uart_pins, clocks, 115200);
 
-    // setting up uart connections
-    // we connect the output
-    let uart: uart::UartPeripheral<uart::Enabled, pac::UART0,
-        (
-            rp2040_hal::gpio::Pin<rp2040_hal::gpio::bank0::Gpio0, FunctionUart, rp2040_hal::gpio::PullDown>,
-            rp2040_hal::gpio::Pin<rp2040_hal::gpio::bank0::Gpio1, FunctionUart, rp2040_hal::gpio::PullDown>
-        )
-    > = uart::UartPeripheral::new(pac.UART0, uart_pins, &mut pac.RESETS)
-        .enable(
-            uart::UartConfig::new(
-                115200.Hz(),
-                uart::DataBits::Eight,
-                None,
-                uart::StopBits::One
-            ),
-            clocks.peripheral_clock.freq(),
-        ).unwrap();
-
-    let (rx, tx) = uart.split();
-
-    let mut rx_buf: [u8; 1] = [0u8; 1];
+    let rx_buf: [u8; 1] = [0u8; 1];
     let mut count: i32 = 0;
     let mut active_state: &[u8; 1] = b"0";
+
+    // sets gpio25 onboard led to high so that we can see the pico has been flashed.
+    pins.gpio25.into_push_pull_output().set_high();
 
     loop {
         // 1. We read the rx channel into the rx_buf. This will give us a single byte which will define our status
@@ -139,27 +126,23 @@ fn main() -> ! {
         //      we either trigger the motor direction based on the state, OR we continue as normal.
         //      Once we do this we update the active_state to be the direction we are moving, so that on the next
         //      loop iteration we trigger the same direction again.
-        match rx.read_raw(&mut rx_buf) {
-            Ok(count) if count > 0 => {
-                match rx_buf[0] {
-                    b'w' if motor_one.state != motor::Direction::FORWARD => {
-                        motor_one.forward();
-                        motor_two.forward();
-                        active_state = b"w";
-                    }
-                    b's' if motor_one.state != motor::Direction::STOPPED => {
-                        motor_one.stop();
-                        motor_two.stop();
-                        active_state = b"s";
-                    }
-                    b'x' if motor_one.state != motor::Direction::BACKWARD => {
-                        motor_one.backwards();
-                        motor_two.backwards();
-                        active_state = b"x";
-                    }
-                    _ => {}
-                }
-            },
+        let command: u8 = uart_connection.read(rx_buf);
+        match command {
+            b'w' if motor_one.state != motor::Direction::FORWARD => {
+                motor_one.forward();
+                motor_two.forward();
+                active_state = b"w";
+            }
+            b's' if motor_one.state != motor::Direction::STOPPED => {
+                motor_one.stop();
+                motor_two.stop();
+                active_state = b"s";
+            }
+            b'x' if motor_one.state != motor::Direction::BACKWARD => {
+                motor_one.backwards();
+                motor_two.backwards();
+                active_state = b"x";
+            }
             _ => {}
         }
         // 3. We throttle the uart connection in kinda a cool way by counting up to 5 million
@@ -170,12 +153,6 @@ fn main() -> ! {
         //      the write command to the pico only activates every 0.5 seconds or so.
         // 4. We flash a led pin to ensure this if block is being triggered.
         count = count.wrapping_add(1);
-        if count >= 5_000_000 {
-            if active_state != b"0" {
-                let _ = tx.write_raw(active_state);
-            }
-            let _ = led_pin.toggle();
-            count = 0;
-        }
+        count = uart_connection.write(count, active_state);
     }
 }
