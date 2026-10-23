@@ -46,10 +46,12 @@
 /// 2. pkill screen: kills all sessions
 /// 3. echo -n "w" > /dev/<target-screen> sets the current active direction
 mod motor;
+mod setup;
 mod types;
 mod uart_connection;
 
-use embedded_hal::digital::OutputPin;
+use embedded_hal::digital::OutputPin as _;
+use setup as mysetup;
 use uart_connection::UARTConnection;
 
 use defmt_rtt as _;
@@ -58,11 +60,9 @@ use panic_probe as _;
 use rp2040_hal::pac;
 use rp2040_hal::pwm;
 use rp2040_hal::uart;
-use rp2040_hal::{
-    gpio::{FunctionUart, Pins},
-    pwm::Slices,
-    Sio, Watchdog,
-};
+
+use rp2040_hal::gpio::FunctionUart;
+use rp2040_hal::pwm::Slices;
 
 #[link_section = ".boot2"]
 #[used]
@@ -70,45 +70,23 @@ pub static BOOT2: [u8; 256] = rp2040_boot2::BOOT_LOADER_W25Q080;
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
-    // take the peripherals for the device
+    // Setup pins and clocks
+    let (pins, clocks) = mysetup::setup_pins();
+
     let mut pac: pac::Peripherals = pac::Peripherals::take().unwrap();
-    // prevents time out
-    let mut watchdog: Watchdog = Watchdog::new(pac.WATCHDOG);
-    // inialise a clock to keep track of timings
-    let clocks: rp2040_hal::clocks::ClocksManager = rp2040_hal::clocks::init_clocks_and_plls(
-        12_000_000u32,
-        pac.XOSC,
-        pac.CLOCKS,
-        pac.PLL_SYS,
-        pac.PLL_USB,
-        &mut pac.RESETS,
-        &mut watchdog,
-    )
-    .unwrap();
-
-    let sio: Sio = Sio::new(pac.SIO);
-
-    // initalise the pins, slice and uart_peripherals
-    let pins: Pins = Pins::new(
-        pac.IO_BANK0,
-        pac.PADS_BANK0,
-        sio.gpio_bank0,
-        &mut pac.RESETS,
-    );
     let pwm_slices: Slices = Slices::new(pac.PWM, &mut pac.RESETS);
     let uart_peripherals: (pac::UART0, pac::RESETS) = (pac.UART0, pac.RESETS);
 
-    let uart_pins: types::UartPins = uart::Pins::default()
-        .tx(pins.gpio0.into_function::<FunctionUart>())
-        .rx(pins.gpio1.into_function::<FunctionUart>());
-
-    // sets up two motors
+    // PWM Motor set up:
     let mut motor_one: motor::Motor<pwm::Pwm1> =
         motor::Motor::from(pins.gpio19, 19, pwm_slices.pwm1);
     let mut motor_two: motor::Motor<pwm::Pwm2> =
         motor::Motor::from(pins.gpio21, 21, pwm_slices.pwm2);
 
-    // we establish a uart connection between out chosen pins.
+    // UART serial mother child connection
+    let uart_pins: types::UartPins = uart::Pins::default()
+        .tx(pins.gpio0.into_function::<FunctionUart>())
+        .rx(pins.gpio1.into_function::<FunctionUart>());
     let uart_connection: UARTConnection<uart::Pins<_, _, _, _>> =
         UARTConnection::from(uart_peripherals, uart_pins, clocks, 115200);
 
