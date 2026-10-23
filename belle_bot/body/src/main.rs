@@ -46,14 +46,13 @@
 /// 2. pkill screen: kills all sessions
 /// 3. echo -n "w" > /dev/<target-screen> sets the current active direction
 mod motor;
-mod uart_connection;
 mod types;
+mod uart_connection;
 
 use embedded_hal::digital::OutputPin;
 use uart_connection::UARTConnection;
 
 use defmt_rtt as _;
-use embedded_hal::digital::StatefulOutputPin;
 use panic_probe as _;
 
 use rp2040_hal::pac;
@@ -128,17 +127,17 @@ fn main() -> ! {
         //      loop iteration we trigger the same direction again.
         let command: u8 = uart_connection.read(rx_buf);
         match command {
-            b'w' if motor_one.state != motor::Direction::FORWARD => {
+            b'w' if motor_one.state != motor::Direction::Forward => {
                 motor_one.forward();
                 motor_two.forward();
                 active_state = b"w";
             }
-            b's' if motor_one.state != motor::Direction::STOPPED => {
+            b's' if motor_one.state != motor::Direction::Stopped => {
                 motor_one.stop();
                 motor_two.stop();
                 active_state = b"s";
             }
-            b'x' if motor_one.state != motor::Direction::BACKWARD => {
+            b'x' if motor_one.state != motor::Direction::Backward => {
                 motor_one.backwards();
                 motor_two.backwards();
                 active_state = b"x";
