@@ -32,7 +32,7 @@ class VisualCortexBoundingBoxModel(nn.Module):
         B = x.shape[0]
 
         # [B, latent_dim] -> [B, 300, query_dim]
-        queries = self.norm(self.query_proj(x).view(B, self.num_boxes, -1))
+        queries = self.norm(self.query_proj(x).reshape(B, self.num_boxes, -1))
 
         # Shared projections across dimension -1
         boxes = torch.sigmoid(self.box_head(queries))  # Coordinates strictly in [0, 1]

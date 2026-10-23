@@ -18,7 +18,5 @@ def get_task_definition(config: VisionEncoderTrainingConfig, device: torch.devic
     # This task shouldn't be directly trained on. This is just here for completeness
     return TaskDefinition(
         model=mdl,
-        perform_step=None,
-        train_set=None,
-        test_set=None
+        perform_step=None
     )

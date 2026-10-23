@@ -2,11 +2,8 @@ import numpy as np
 import torch
 import webdataset as wds
 
+from belle_bot.vision.config.vision_encoder_training_config import VisionEncoderTrainingConfig
 from belle_bot.vision.tasks.encoder.data_loader import colour_jitter, extract_encoder_input, merge
-
-# Dataset setup
-train_path = str("/run/media/belle/Houston/datasets/vision-encoder/v1/train-{000000..000036}.tar")
-test_path = str("/run/media/belle/Houston/datasets/vision-encoder/v1/test-{000000..000007}.tar")
 
 
 def extract_decoder_output(data, apply_depth_mask=True):
@@ -39,16 +36,16 @@ def extract_decoder_output_eval(data):
     return extract_decoder_output(data, apply_depth_mask=False)
 
 
-def load_dataset(config):
+def load_dataset(config: VisionEncoderTrainingConfig):
     train_dataset = (
-        wds.WebDataset(train_path, resampled=True)
+        wds.WebDataset(config.training_path, resampled=True)
         .shuffle(10000)
         .map(extract_decoder_output_train)
         .batched(config.mini_batch_size, collation_fn=to_tensor)
     )
 
     test_dataset = (
-        wds.WebDataset(test_path, resampled=True)
+        wds.WebDataset(config.testing_path, resampled=True)
         .shuffle(10000)
         .map(extract_decoder_output_eval)
         .batched(config.mini_batch_size, collation_fn=to_tensor)

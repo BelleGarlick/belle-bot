@@ -47,6 +47,8 @@ add section for adding input modalities
 
 ### Todo list
 - [ ] Add more metrics during training that can be used to monitor training performance.
+- [ ] Finish writing this page
+- [ ] Add unit testing to everything
 - [ ] V3
   - [ ] Custom yolo classes for bb / segmentation so we learn and concentrate only on information we want.
   - [ ] Perform ablations on the vision stack

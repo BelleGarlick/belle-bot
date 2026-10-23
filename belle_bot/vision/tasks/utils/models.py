@@ -15,10 +15,6 @@ class TaskDefinition:
 
     perform_step: Callable[[VisualCortexStepArgs], dict[str, torch.Tensor]]
 
-    train_set: iter
-
-    test_set: iter
-
 
 @dataclass
 class VisualCortexStepArgs:
@@ -26,8 +22,6 @@ class VisualCortexStepArgs:
     config: VisionEncoderTrainingConfig
 
     batch: Any
-
-    vision_encoder: VisualCortexEncoder
 
     model: nn.Module
 

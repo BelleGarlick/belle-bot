@@ -39,6 +39,8 @@ class YOLODistillationLoss(nn.Module):
         self.smooth_l1 = nn.SmoothL1Loss(reduction="none")
 
     def forward(self, pred_student: torch.Tensor, target_teacher: torch.Tensor) -> dict[str, torch.Tensor]:
+        pred_student = pred_student.contiguous()
+        target_teacher = target_teacher.contiguous()
         """
         pred_student:   [Batch, Num_Boxes, 4 + 1 + Num_Classes] -> [cx, cy, w, h, obj_logit, class_logits...]
         target_teacher: [Batch, Num_Boxes, 6]                  -> [cx, cy, w, h, obj_logit, class_id]

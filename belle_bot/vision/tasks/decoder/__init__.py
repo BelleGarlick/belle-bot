@@ -1,11 +1,9 @@
 import torch
-from torch.utils.data import DataLoader
 
 from belle_bot.vision.config.vision_encoder_training_config import VisionEncoderTrainingConfig
 from . import model, loss, train
 from ..utils.models import TaskDefinition
 from belle_bot.vision.tasks.decoder.data_loader import load_dataset as decoder_dataset
-from belle_bot.vision.tasks.utils.data import get_infinite_dataloader
 
 
 def get_task_definition(config: VisionEncoderTrainingConfig, device: torch.device):
@@ -22,15 +20,7 @@ def get_task_definition(config: VisionEncoderTrainingConfig, device: torch.devic
     if config.model.decoder.file_path:
         mdl.load_state_dict(torch.load(config.model.decoder.file_path, map_location=device))
 
-    # Prepare the train/test datasets
-    pin_memory = device.type != 'mps'
-    decoder_train_dataset, decoder_test_dataset = decoder_dataset(config)
-    decoder_train_loader = get_infinite_dataloader(DataLoader(decoder_train_dataset, batch_size=None, pin_memory=pin_memory))
-    decoder_test_loader = get_infinite_dataloader(DataLoader(decoder_test_dataset, batch_size=None, pin_memory=pin_memory))
-
     return TaskDefinition(
         model=mdl,
-        perform_step=train.perform_step,
-        train_set=decoder_train_loader,
-        test_set=decoder_test_loader
+        perform_step=train.perform_step
     )

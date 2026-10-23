@@ -23,15 +23,7 @@ def get_task_definition(config: VisionEncoderTrainingConfig, device: torch.devic
     if config.model.detection.file_path:
         mdl.load_state_dict(torch.load(config.model.detection.file_path, map_location=device))
 
-    # Prepare the train/test datasets
-    pin_memory = device.type != 'mps'
-    segmentation_train_dataset, segmentation_test_dataset = segmentation_dataset(config)
-    segmentation_train_loader = get_infinite_dataloader(DataLoader(segmentation_train_dataset, batch_size=None, pin_memory=pin_memory))
-    segmentation_test_loader = get_infinite_dataloader(DataLoader(segmentation_test_dataset, batch_size=None, pin_memory=pin_memory))
-
     return TaskDefinition(
         model=mdl,
-        perform_step=train.perform_step,
-        train_set=segmentation_train_loader,
-        test_set=segmentation_test_loader
+        perform_step=train.perform_step
     )

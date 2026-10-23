@@ -11,7 +11,10 @@ class DepthwiseSeparableConv(nn.Module):
         self.act = nn.SiLU(inplace=True)
 
     def forward(self, x):
-        return self.act(self.bn(self.pointwise(self.depthwise(x))))
+        x = self.depthwise(x)
+        x = self.pointwise(x)
+        x = x.contiguous()
+        return self.act(self.bn(x))
 
 
 class VisualCortexEncoder(nn.Module):
@@ -34,7 +37,7 @@ class VisualCortexEncoder(nn.Module):
 
     def encode(self, x):
         h = self.encoder(x)
-        h = torch.flatten(h, start_dim=1)
+        h = torch.flatten(h, start_dim=1).contiguous()
         return self.fc_mu(h), self.fc_logvar(h)
 
     def reparameterize(self, mu, logvar):

@@ -8,6 +8,8 @@ class OptimizedVaeLoss(nn.Module):
         super().__init__()
 
     def forward(self, recon_x, y):
+        recon_x = recon_x.contiguous()
+        y = y.contiguous()
         loss = F.cross_entropy(recon_x, y)
 
         target_labels = torch.argmax(F.softmax(recon_x, dim=1), dim=1)

@@ -25,8 +25,8 @@ class LightweightPerceptualLoss(nn.Module):
             param.requires_grad = False
 
         # ImageNet normalization statistics
-        self.register_buffer("mean", torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1))
-        self.register_buffer("std", torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1))
+        self.register_buffer("mean", torch.tensor([0.485, 0.456, 0.406]).reshape(1, 3, 1, 1))
+        self.register_buffer("std", torch.tensor([0.229, 0.224, 0.225]).reshape(1, 3, 1, 1))
 
     def train(self, mode=True):
         # Enforce eval mode for feature extractor regardless of parent module state
@@ -80,8 +80,8 @@ class VGGPerceptualLoss(nn.Module):
         for param in self.parameters():
             param.requires_grad = False
 
-        self.register_buffer("mean", torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1))
-        self.register_buffer("std", torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1))
+        self.register_buffer("mean", torch.tensor([0.485, 0.456, 0.406]).reshape(1, 3, 1, 1))
+        self.register_buffer("std", torch.tensor([0.229, 0.224, 0.225]).reshape(1, 3, 1, 1))
 
     def forward(self, x, y):
         x_norm = (x[:, :3] - self.mean) / self.std
@@ -124,6 +124,8 @@ class OptimizedVaeLoss(nn.Module):
         self.grad_weight = grad_weight
 
     def forward(self, recon_x, y):
+        recon_x = recon_x.contiguous()
+        y = y.contiguous()
         recon_rgb, recon_depth = recon_x[:, :3, :, :], recon_x[:, 3:, :, :]
         rgb, depth = y[:, :3, :, :], y[:, 3:, :, :]
 

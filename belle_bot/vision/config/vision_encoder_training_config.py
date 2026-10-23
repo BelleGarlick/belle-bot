@@ -13,6 +13,10 @@ class VisionEncoderTrainingConfig(BaseModel):
 
     houston: HoustonConfig = HoustonConfig()
 
+    training_path: str = Field(..., description="Path to training data")
+
+    testing_path: str = Field(..., description="Path to testing data")
+
     # Save the model weights every 50_000 steps
     render_image_every_n_steps: int = Field(50_000, description="Render images every 50_000 steps")
 
@@ -26,10 +30,12 @@ class VisionEncoderTrainingConfig(BaseModel):
     max_val_steps: int = Field(1000, description="max number of validation steps")
 
     # The number of samplers per update
-    mini_batch_size: int = Field(4, description="The number of samplers per update")
+    mini_batch_size: int = Field(16, description="The number of samplers per update")
 
     # The optimizer learning rate
-    learning_rate: float = Field(1e-4, description="The optimiser learning rate")
+    learning_rate: float = Field(1e-3, description="The optimiser learning rate")
+
+    encoder_learning_rate_factor: float = Field(0.1, description="Factor to scale the encoder learning rate")
 
     # The rate to which the learning rate decays. lr = lr * (1- (step/max_steps)^gamma)
     learning_rate_gamma: float = Field(0.4, description="The rate to which the learning rate decays. lr = lr * (1- (step/max_steps)^gamma)")

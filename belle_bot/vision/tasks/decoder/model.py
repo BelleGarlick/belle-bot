@@ -78,7 +78,7 @@ class VisualCortexDecoder(nn.Module):
 
     def decode(self, z):
         h = self.decoder_input(z)
-        h = h.view(-1, 512, 7, 7)
+        h = h.reshape(-1, 512, 7, 7)
         return self.decoder(h)
 
     def forward(self, x):

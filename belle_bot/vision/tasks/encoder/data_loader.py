@@ -1,5 +1,4 @@
 import io
-from pathlib import Path
 
 import cv2
 import numpy as np
@@ -8,12 +7,6 @@ from PIL import Image
 
 # TODO since we do 448 then randomly crop within and scale back up to 448 we lose fidelity which will affect performance
 #  this should be changed
-
-# Dataset setup
-base_path = Path("/run/media/belle/Houston/datasets/vision-encoder/v1/")
-train_path = str("/Users/belle/Developer/belle-bot/train-{000000..000000}.tar")
-# train_path = str(base_path / "train-{000000..000004}.tar")
-test_path = str(base_path / "test-{000000..000001}.tar")
 
 
 def extract_encoder_input(data):

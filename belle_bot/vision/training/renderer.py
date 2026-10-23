@@ -30,12 +30,12 @@ def render_training_progress(
     with torch.no_grad():
         image_pairs = []
         for b_item in test_dl:
-            batch = b_item[0].to(device)
+            batch = b_item['input'].to(device)
 
             x_np = batch.detach().cpu().numpy()
 
             batch_latent = tasks['encoder'].model(batch)[0]
-            batch_detection_y = tasks['detection'].model(batch_latent)
+            batch_detection_y = tasks['bounding_boxes'].model(batch_latent)
             batch_decoder_y = tasks['decoder'].model(batch_latent)
             batch_segmentation_y = tasks['segmentation'].model(batch_latent)
 
