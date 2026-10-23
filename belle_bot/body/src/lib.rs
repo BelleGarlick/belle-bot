@@ -3,3 +3,4 @@
 pub mod motor;
 pub mod types;
 pub mod uart_connection;
+pub mod setup;
