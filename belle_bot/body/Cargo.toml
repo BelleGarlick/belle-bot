@@ -4,6 +4,14 @@ name = "belle-bot-9000"
 version = "0.1.0"
 license = "MIT OR Apache-2.0"
 
+[[bin]]
+name = "belle-bot-9000"
+path = "src/main.rs"
+test = false
+doctest = false
+bench = false
+
+
 [dependencies]
 cortex-m = "0.7"
 cortex-m-rt = "0.7"
@@ -16,9 +24,8 @@ defmt-rtt = "1"
 panic-halt = "0.2.0"
 panic-probe = { version = "1", features = ["print-defmt"] }
 
-flip-link = "0.1.12"
 
-rp2040-hal = { version="0.10", features=["rt", "critical-section-impl"] }
+rp2040-hal = { version = "0.10", features = ["rt", "critical-section-impl"] }
 rp2040-boot2 = "0.3"
 
 # cargo build/run
