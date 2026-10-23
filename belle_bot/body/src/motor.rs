@@ -4,20 +4,11 @@ use rp2040_hal::gpio;
 use rp2040_hal::pwm;
 use rp2040_hal::pwm::Slice;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub enum Direction {
     Forward,
     Backward,
     Stopped,
-}
-impl Clone for Direction {
-    fn clone(&self) -> Direction {
-        match self {
-            Direction::Forward => Direction::Forward,
-            Direction::Backward => Direction::Backward,
-            Direction::Stopped => Direction::Stopped,
-        }
-    }
 }
 
 #[allow(dead_code)]
