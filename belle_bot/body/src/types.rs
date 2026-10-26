@@ -1,7 +1,8 @@
 use rp2040_hal::gpio::{
     bank0::{Gpio0, Gpio1},
-    FunctionUart, Pin, PullDown,
+    AnyPin, FunctionPwm, FunctionUart, Pin, PullDown,
 };
+use rp2040_hal::pwm::{Channel, InputHighRunning, Slice, A, B};
 use rp2040_hal::typelevel;
 use rp2040_hal::uart;
 
@@ -12,3 +13,11 @@ pub type UartPins = uart::Pins<
     typelevel::OptionTNone,
     typelevel::OptionTNone,
 >;
+
+pub type PWMChannelA<S> = Channel<Slice<S, InputHighRunning>, A>;
+
+pub type PWMChannelB<S> = Channel<Slice<S, InputHighRunning>, B>;
+
+pub type PWMChannelAPin<TP> = Pin<<TP as AnyPin>::Id, FunctionPwm, <TP as AnyPin>::Pull>;
+
+pub type PWMChannelBPin<FP> = Pin<<FP as AnyPin>::Id, FunctionPwm, <FP as AnyPin>::Pull>;
