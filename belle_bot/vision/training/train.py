@@ -212,7 +212,7 @@ if __name__ == "__main__":
                 # Log the metrics if enabled
                 if config.mlflow.enabled:
                     mlflow.log_metrics({
-                        **logger.metrics,
+                        **{key: np.mean(value) for key, value in logger.metrics.items()},
                         "lr": optimizer.param_groups[0]["lr"],
                     }, step=step + 1)
 
