@@ -76,7 +76,7 @@ def is_on_step(step, mod):
 if __name__ == "__main__":
     best_val_loss = math.inf
 
-    logger = MetricLogger(deque_length=100)
+    logger = MetricLogger(deque_length=1000)
 
     if config.mlflow.enabled:
         mlflow.set_tracking_uri(config.mlflow.endpoint)
@@ -97,7 +97,7 @@ if __name__ == "__main__":
             mlflow.log_params(clpy.to_dict(config))
             # todo log the training command that would allow for this config
 
-        for step in range(0, config.max_steps, config.mini_batch_size):
+        for step in range(0, config.max_steps, config.micro_batch_size):
             for model in all_models: model.train()
 
             percentage_complete = step / config.max_steps
@@ -188,6 +188,7 @@ if __name__ == "__main__":
 
                         val_step_metrics['val_loss'] = val_loss.item()
 
+                        logger.log(val_step_metrics)
                         print(f"\rValidating. Items: {val_step * config.micro_batch_size}", end="")
 
                     logger.write_validation_metrics(step + 1)
