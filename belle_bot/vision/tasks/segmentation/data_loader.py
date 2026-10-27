@@ -43,14 +43,14 @@ def load_dataset(config: VisionEncoderTrainingConfig):
         wds.WebDataset(config.training_path, resampled=True)
         .shuffle(10000)
         .map(extract_segmentation_data_train)
-        .batched(config.mini_batch_size, collation_fn=to_tensor)
+        .batched(config.micro_batch_size, collation_fn=to_tensor)
     )
 
     test_dataset = (
         wds.WebDataset(config.testing_path, resampled=True)
         .shuffle(10000)
         .map(extract_segmentation_data_eval)
-        .batched(config.mini_batch_size, collation_fn=to_tensor)
+        .batched(config.micro_batch_size, collation_fn=to_tensor)
     )
 
     return train_dataset, test_dataset

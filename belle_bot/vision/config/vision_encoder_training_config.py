@@ -29,8 +29,11 @@ class VisionEncoderTrainingConfig(BaseModel):
     # Max number of validation steps to perform while accumulating a validation average
     max_val_steps: int = Field(1000, description="max number of validation steps")
 
-    # The number of samplers per update
-    mini_batch_size: int = Field(16, description="The number of samplers per update")
+    # The size of the update to pass through the model each step to reduce gpu memory
+    micro_batch_size: int = Field(4, description="The microbatch size")
+
+    # The total mini batch size before a gradient update
+    mini_batch_size: int = Field(64, description="The gradient accumulation step size")
 
     # The optimizer learning rate
     learning_rate: float = Field(1e-3, description="The optimiser learning rate")

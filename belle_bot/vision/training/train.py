@@ -1,7 +1,9 @@
 import math
 import torch
+
+from belle_bot.vision.training.metric_logger import MetricLogger
+
 torch.autograd.set_detect_anomaly(True)
-from collections import deque
 from contextlib import nullcontext
 
 import mlflow
@@ -33,7 +35,7 @@ config = clpy.parse_cli_args(VisionEncoderTrainingConfig(
     ),
     eval_every_n_steps=500,
     max_val_steps=100,
-    mini_batch_size=4
+    micro_batch_size=4
 ))
 
 tasks = {
@@ -65,13 +67,21 @@ optimizer = torch.optim.AdamW([
 model_params = list(tasks['encoder'].model.parameters()) + decoder_params
 
 
+def is_on_step(step, mod):
+    items = list(range(step + 1, step + config.micro_batch_size + 1))
+    items = [x % mod for x in items]
+    return 0 in items
+
+
 if __name__ == "__main__":
     best_val_loss = math.inf
+
+    logger = MetricLogger(deque_length=100)
 
     if config.mlflow.enabled:
         mlflow.set_tracking_uri(config.mlflow.endpoint)
         mlflow.set_experiment("vision-encoder")
-        mlflow_run = mlflow.start_run(run_name=str("optimised-vae"))
+        mlflow_run = mlflow.start_run(run_name=config.mlflow.experiment_name)
     else:
         mlflow_run = nullcontext()
 
@@ -85,10 +95,9 @@ if __name__ == "__main__":
     with mlflow_run:
         if config.mlflow.enabled:
             mlflow.log_params(clpy.to_dict(config))
+            # todo log the training command that would allow for this config
 
-        epoch_loss_train = {}
-
-        for step in range(config.max_steps):
+        for step in range(0, config.max_steps, config.mini_batch_size):
             for model in all_models: model.train()
 
             percentage_complete = step / config.max_steps
@@ -96,8 +105,6 @@ if __name__ == "__main__":
 
             # scale the learning rate through training
             lr = update_learning_rate(percentage_remaining)
-
-            optimizer.zero_grad()
 
             loss = torch.zeros(1).to(DEVICE)
             step_metrics = {}
@@ -125,7 +132,6 @@ if __name__ == "__main__":
                 # Add all metrics to the step_results
                 loss += task_loss['loss'] / len(active_tasks)
                 for key, value in task_loss.items():
-                    if isinstance(value, torch.Tensor): value = value.item()
                     step_metrics[task + "_" + key] = value
 
             # KL Annealing: start at 0, increase to 1
@@ -133,31 +139,26 @@ if __name__ == "__main__":
             kl_loss = -0.5 * torch.mean(1 + logvar_clamped - mu.pow(2) - logvar_clamped.exp())
             kl_beta = percentage_complete * config.kl_annealing
             kl_loss = kl_loss * kl_beta
-            step_metrics['kl_loss'] = kl_loss.item()
+            step_metrics['kl_loss'] = kl_loss
             loss += kl_loss
 
             # Train the model
             loss.backward()
             step_metrics['loss'] = loss.item()
             torch.nn.utils.clip_grad_norm_(model_params, max_norm=0.5)
-            optimizer.step()
 
-            for key, value in step_metrics.items():
-                if key not in epoch_loss_train: epoch_loss_train[key] = deque(maxlen=2000)
-                epoch_loss_train[key].append(value)
+            logger.log(step_metrics)
+            logger.write_training_metrics(step)
 
-            print(f"\rStep: {step}. Loss: {np.mean(epoch_loss_train['loss']):.5f} "
-                  f"decoder: {np.mean(epoch_loss_train['decoder_loss']):.5f} "
-                  f"segmentation: {np.mean(epoch_loss_train['segmentation_loss']):.5f} "
-                  f"bounding_boxes: {np.mean(epoch_loss_train['bounding_boxes_loss']):.5f} ",
-                  # f"language: {np.mean(epoch_loss_train['language_loss']):.5f} ",
-                end=""
-            )
+            # If we're on a mini batch step, train the model.
+            # Allows for gradient accumulation
+            if is_on_step(step, config.mini_batch_size):
+                optimizer.step()
+                optimizer.zero_grad()
 
             # Validation
-            if (step + 1) % config.eval_every_n_steps == 0:
+            if is_on_step(step, config.eval_every_n_steps):
                 for model in all_models: model.eval()
-                epoch_loss_val = {}
 
                 with torch.no_grad():
                     for val_step in range(config.max_val_steps):
@@ -187,25 +188,11 @@ if __name__ == "__main__":
 
                         val_step_metrics['val_loss'] = val_loss.item()
 
-                        for key, value in val_step_metrics.items():
-                            if key not in epoch_loss_val: epoch_loss_val[key] = deque(maxlen=2000)
-                            epoch_loss_val[key].append(value)
+                        print(f"\rValidating. Items: {val_step * config.micro_batch_size}", end="")
 
-                        print(f"\rValidating. Items: {val_step * config.mini_batch_size}", end="")
+                    logger.write_validation_metrics(step + 1)
 
-                    print(f"\rStep: {step+1}. Loss: {np.mean(epoch_loss_train['loss']):.5f} "
-                          f"decoder: {np.mean(epoch_loss_train['decoder_loss']):.5f} "
-                          f"segmentation: {np.mean(epoch_loss_train['segmentation_loss']):.5f} "
-                          f"bounding_boxes: {np.mean(epoch_loss_train['bounding_boxes_loss']):.5f} ",
-                          # f"language: {np.mean(epoch_loss_train['language_loss']):.5f} ",
-                          f"Val Loss: {np.mean(val_step_metrics['val_loss']):.5f} ",
-                          f"decoder: {np.mean(val_step_metrics['val_decoder_loss']):.5f} "
-                          f"segmentation: {np.mean(val_step_metrics['val_segmentation_loss']):.5f} "
-                          f"bounding_boxes: {np.mean(val_step_metrics['val_bounding_boxes_loss']):.5f} ",
-                          # f"language: {np.mean(val_step_metrics['val_language_loss']):.5f} ",
-                      )
                     render_training_progress(
-                        -1,
                         tasks=tasks,
                         test_dl=testing_set,
                         device=DEVICE,
@@ -224,15 +211,17 @@ if __name__ == "__main__":
                 # Log the metrics if enabled
                 if config.mlflow.enabled:
                     mlflow.log_metrics({
-                        **epoch_loss_train,
-                        **val_step_metrics,
+                        **logger.metrics,
+                        "lr": optimizer.param_groups[0]["lr"],
                     }, step=step + 1)
 
             # Render images if the step % is reached
-            if (step + 1) % config.render_image_every_n_steps == 0:
-                render_training_progress(
-                    step,
-                    tasks=tasks,
-                    test_dl=testing_set,
-                    device=DEVICE,
+            if is_on_step(step, config.render_image_every_n_steps):
+                mlflow.log_image(
+                    render_training_progress(
+                        tasks=tasks,
+                        test_dl=testing_set,
+                        device=DEVICE,
+                    ),
+                    step=step + 1,
                 )

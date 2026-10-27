@@ -8,7 +8,6 @@ from belle_bot.vision.tasks.utils.models import TaskDefinition
 
 
 def render_training_progress(
-        step,
         tasks: dict[str, TaskDefinition],
         test_dl,
         device: torch.device,
@@ -85,7 +84,9 @@ def render_training_progress(
         plt.figure(figsize=(32, 8 * len(rows)))
         plt.title(f"Reconstructions - Left: RGB, Right: Depth | Top: Input, Bottom: Output")
         plt.imshow(np.clip(grid, 0, 255))
-        plt.savefig(f"visualisation_{step}.png")
+        plt.savefig(f"visualisation.png")
         #plt.show()
         plt.close()
+
+        return grid
 
