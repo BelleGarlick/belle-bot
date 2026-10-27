@@ -11,6 +11,8 @@ class MlFlowConfig(BaseModel):
 
     endpoint: str = "http://houston:5000"
 
+    experiment_name: str = Field("Visual Cortex Run", description="Ml Flow experiment name")
+
 
 class PositioningConfig(BaseModel):
 
