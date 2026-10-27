@@ -1,58 +1,106 @@
+use crate::types;
+
+use rp2040_hal::gpio::AnyPin;
+use rp2040_hal::pwm::SliceId;
+use types as internal_types;
+
 use embedded_hal::pwm::SetDutyCycle;
 
 use rp2040_hal::gpio;
 use rp2040_hal::pwm;
 use rp2040_hal::pwm::Slice;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub enum Direction {
     Forward,
     Backward,
     Stopped,
+    Left,
+    Right,
 }
-impl Clone for Direction {
-    fn clone(&self) -> Direction {
-        match self {
-            Direction::Forward => Direction::Forward,
-            Direction::Backward => Direction::Backward,
-            Direction::Stopped => Direction::Stopped,
+
+pub struct Speed {
+    direction: Direction,
+    rate: u16,
+}
+impl Speed {
+    pub fn get_rate(&self) -> u16 {
+        self.rate
+    }
+    pub fn get_direction(&self) -> Direction {
+        self.direction.clone()
+    }
+    fn forward(speed: u16) -> Speed {
+        Speed {
+            direction: Direction::Forward,
+            rate: speed,
+        }
+    }
+    fn backward(speed: u16) -> Speed {
+        Speed {
+            direction: Direction::Backward,
+            rate: speed,
+        }
+    }
+    fn stop() -> Speed {
+        Speed {
+            direction: Direction::Stopped,
+            rate: 0,
+        }
+    }
+    pub fn from_buff(buff: u8) -> Speed {
+        if (97..107).contains(&buff) {
+            Speed::forward(2500 * (buff - 97) as u16)
+        } else if (107..117).contains(&buff) {
+            Speed::backward(2500 * (buff - 117) as u16)
+        } else if (117..127).contains(&buff) {
+            Speed {
+                direction: Direction::Left,
+                rate: 2500 * (buff - 127) as u16,
+            }
+        } else if (127..137).contains(&buff) {
+            Speed {
+                direction: Direction::Right,
+                rate: 2500 * (buff - 127) as u16,
+            }
+        } else {
+            Speed::stop()
         }
     }
 }
 
 #[allow(dead_code)]
-pub struct Motor<S: pwm::SliceId> {
-    pub state: Direction,
-    pin: u8,
-    pwm_slice: Slice<S, pwm::FreeRunning>,
+pub struct Motor<S: pwm::SliceId, TP: AnyPin, FP: AnyPin> {
+    speed: Speed,
+    to_pin: types::PWMChannelAPin<TP>,
+    from_pin: types::PWMChannelBPin<FP>,
+    pwm_slice: Slice<S, pwm::InputHighRunning>,
 }
-impl<S> Motor<S>
+impl<S: SliceId, FP: AnyPin, TP: AnyPin> Motor<S, FP, TP>
 where
     S: pwm::SliceId,
 {
-    pub fn forward(&mut self)
+    pub fn forward(&mut self, speed: u16)
     where
         S: pwm::SliceId,
     {
         self.pwm_slice.channel_a.set_duty_cycle(0);
-        let channel: &mut pwm::Channel<Slice<S, pwm::FreeRunning>, pwm::B> =
-            &mut self.pwm_slice.channel_b;
-        for i in 1..25000 {
+        let channel: &mut types::PWMChannelB<S> = &mut self.pwm_slice.channel_b;
+        for i in 1..speed {
             channel.set_duty_cycle(i);
         }
-        self.state = Direction::Forward;
+        self.speed = Speed::forward(speed);
     }
-    pub fn backwards(&mut self)
+    pub fn backwards(&mut self, speed: u16)
     where
         S: pwm::SliceId,
     {
         self.pwm_slice.channel_b.set_duty_cycle(0);
-        let channel: &mut pwm::Channel<Slice<S, pwm::FreeRunning>, pwm::A> =
-            &mut self.pwm_slice.channel_a;
-        for i in (1..25000).rev() {
+        let channel: &mut types::PWMChannelA<S> = &mut self.pwm_slice.channel_a;
+        for i in 1..speed {
             channel.set_duty_cycle(i);
         }
-        self.state = Direction::Backward;
+        self.speed = Speed::backward(speed);
     }
     pub fn stop(&mut self)
     where
@@ -60,32 +108,38 @@ where
     {
         self.pwm_slice.channel_a.set_duty_cycle(0);
         self.pwm_slice.channel_b.set_duty_cycle(0);
-        self.state = Direction::Stopped;
+        self.speed = Speed::stop();
     }
     // TODO: be able to find pin id from pin instead of parsing in additional arg
-    pub fn from<P>(pin: P, pin_num: u8, mut slice: Slice<S, pwm::FreeRunning>) -> Motor<S>
+    pub fn from(to_pin: TP, from_pin: FP, mut slice: Slice<S, pwm::FreeRunning>) -> Motor<S, TP, FP>
     where
         S: pwm::SliceId,
-        P: gpio::AnyPin,
-        <P as gpio::AnyPin>::Id: pwm::ValidPwmOutputPin<S, pwm::B>,
+        TP: gpio::AnyPin,
+        FP: gpio::AnyPin,
+        <FP as gpio::AnyPin>::Id: pwm::ValidPwmInputPin<S>,
+        <TP as gpio::AnyPin>::Id: pwm::ValidPwmOutputPin<S, pwm::A>,
     {
-        // creates a central pulsing wave for PWM ph is phase correct which means
-        // the wave form timer counts all the way up and then all the way back down again giving a nice curve
+        // We set the ph (phase) to the correct mode.
+        // We enable the slice.
+        // We set the slice to high running input meaning we read the input and output consistently from
+        //  channel b to channel a
         slice.set_ph_correct();
         slice.enable();
+        let mut slice: Slice<S, pwm::InputHighRunning> = slice.into_mode::<pwm::InputHighRunning>();
 
         // Slice is a generic slice type provided by the pwm slice
         // FreeRunning is the slice mode where the counter is continuous
         // B is the channel output type, where current flows out
-        let channel: &mut pwm::Channel<Slice<S, pwm::FreeRunning>, pwm::B> = &mut slice.channel_b;
-
-        // set the output of the pwm signal, pin is consumed by this and the object is lost
-        channel.output_to(pin);
+        // set the input and output of the pwm signal, pin is consumed by this and the object is lost
+        let channel_pin_b: internal_types::PWMChannelBPin<FP> =
+            slice.channel_b.input_from(from_pin);
+        let channel_pin_a: internal_types::PWMChannelAPin<TP> = slice.channel_a.output_to(to_pin);
 
         // return info on the motor
         Motor {
-            state: Direction::Stopped,
-            pin: pin_num,
+            speed: Speed::stop(),
+            to_pin: channel_pin_a,
+            from_pin: channel_pin_b,
             pwm_slice: slice,
         }
     }
